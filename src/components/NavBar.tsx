@@ -1,6 +1,4 @@
 import React, { useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { Button } from './ui/button'
 import { useNavigate } from 'react-router-dom'
 import { logger } from '@/lib/logger'
 import { useUser } from '@/lib/contexts/UserContext'
