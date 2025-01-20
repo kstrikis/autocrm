@@ -31,7 +31,7 @@ describe('Core User Flow', () => {
     cy.contains(TEST_USER, { timeout: 10000 }).should('be.visible')
 
     // Verify localStorage has the user data
-    cy.window().its('localStorage').invoke('getItem', 'chatgenius_user').should('exist')
+    cy.window().its('localStorage').invoke('getItem', 'autocrm_user').should('exist')
 
     // Refresh the page
     cy.reload()
@@ -55,7 +55,7 @@ describe('Core User Flow', () => {
 
     // Click logout button and wait for user state to be cleared
     cy.get('button[aria-label="Logout"]').click()
-    cy.window().its('localStorage').invoke('getItem', 'chatgenius_user').should('not.exist')
+    cy.window().its('localStorage').invoke('getItem', 'autocrm_user').should('not.exist')
 
     // Verify we're back at the login page
     cy.get('input[placeholder*="guest name"]', { timeout: 10000 }).should('be.visible')
