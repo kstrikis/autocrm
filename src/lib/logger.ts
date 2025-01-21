@@ -31,7 +31,7 @@ const LOG_LEVELS: Record<LogLevel, number> = {
 };
 
 function getLogLevel(): LogLevel {
-  return window.location.hostname === 'localhost' ? 'debug' : 'warn';
+  return window.location.hostname === 'localhost' ? 'info' : 'warn';
 }
 
 function formatTimestamp(): string {

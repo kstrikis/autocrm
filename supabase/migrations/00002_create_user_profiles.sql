@@ -38,6 +38,10 @@ create policy "User profiles are viewable by authenticated users"
   on public.user_profiles for select
   using (auth.role() = 'authenticated');
 
+create policy "Users can insert their own profile"
+  on public.user_profiles for insert
+  with check (auth.uid() = id);
+
 create policy "Users can update their own profile"
   on public.user_profiles for update
   using (auth.uid() = id)
@@ -64,7 +68,15 @@ returns trigger
 language plpgsql
 security definer set search_path = public
 as $$
+declare
+  default_role user_role;
 begin
+  -- Set default role to customer if not provided
+  default_role := coalesce(
+    (new.raw_user_meta_data->>'role')::user_role,
+    'customer'::user_role
+  );
+
   insert into public.user_profiles (
     id,
     full_name,
@@ -74,8 +86,8 @@ begin
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'full_name', new.email),
-    new.raw_user_meta_data->>'display_name',
-    (new.raw_user_meta_data->>'role')::user_role
+    coalesce(new.raw_user_meta_data->>'display_name', new.raw_user_meta_data->>'full_name', new.email),
+    default_role
   );
   return new;
 end;

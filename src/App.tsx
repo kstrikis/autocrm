@@ -4,8 +4,11 @@ import { logger } from '@/lib/logger'
 import { Layout } from '@/components/Layout'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { AuthGuard } from '@/components/auth/AuthGuard'
 import { LandingPage } from '@/pages/LandingPage'
 import { AuthPage } from '@/pages/AuthPage'
+import { AuthCallback } from '@/pages/auth/callback'
+import { SettingsPage } from '@/pages/SettingsPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { Toaster } from '@/components/ui/toaster'
 import { AuthProvider } from '@/contexts/AuthContext'
@@ -19,7 +22,22 @@ export function App(): React.ReactElement {
           <Routes>
             <Route element={<Layout />}>
               <Route path="/" element={<LandingPage />} />
-              <Route path="/auth" element={<AuthPage />} />
+              
+              {/* Auth routes - redirect to dashboard if already logged in */}
+              <Route element={<AuthGuard />}>
+                <Route path="/auth" element={<AuthPage />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
+              </Route>
+
+              {/* Protected routes - require authentication */}
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute>
+                    <SettingsPage />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/dashboard"
                 element={
