@@ -1,18 +1,18 @@
 /// <reference types="cypress" />
 import React from 'react'
 import { mount } from 'cypress/react18'
-import { UserForm } from '../../src/components/UserForm'
+import { UserForm } from '@/components/UserForm'
 
 describe('UserForm', () => {
   beforeEach(() => {
     // Mock the createUser function
-    cy.window().then((win: Window) => {
+    cy.window().then((win) => {
       win.createUser = cy.stub().as('createUser')
     })
   })
 
   it('should render the form', () => {
-    mount(<UserForm />)
+    mount(<UserForm onSubmit={() => {}} submitText="Sign In" />)
     cy.get('form').should('exist')
     cy.get('input[id="name"]').should('exist')
     cy.get('input[id="email"]').should('exist')
@@ -54,10 +54,10 @@ describe('UserForm', () => {
   it('should handle errors', () => {
     // Mock error response
     cy.window().then((win) => {
-      win.createUser.rejects(new Error('Failed to create user'))
+      win.createUser = cy.stub().as('createUser').rejects(new Error('Failed to create user'))
     })
     
-    mount(<UserForm />)
+    mount(<UserForm onSubmit={() => {}} submitText="Sign In" />)
     
     const name = 'Test User'
     const email = 'test@example.com'

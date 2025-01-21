@@ -23,20 +23,6 @@ export const supabase = createClient<Database>(
   }
 );
 
-const ANIMAL_NAMES = [
-  'Aardvark', 'Bear', 'Cheetah', 'Dolphin', 'Elephant',
-  'Fox', 'Giraffe', 'Hippo', 'Iguana', 'Jaguar',
-  'Kangaroo', 'Lion', 'Monkey', 'Narwhal', 'Octopus',
-  'Penguin', 'Quokka', 'Raccoon', 'Sloth', 'Tiger',
-  'Unicorn', 'Vulture', 'Walrus', 'Xenops', 'Yak',
-  'Zebra'
-]
-
-export function generateAnonymousName(): string {
-  const randomAnimal = ANIMAL_NAMES[Math.floor(Math.random() * ANIMAL_NAMES.length)]
-  return `Anonymous ${randomAnimal}`
-}
-
 // Interface matching GraphQL schema (using camelCase as defined in schema directives)
 export interface User {
   id: string

@@ -5,4 +5,4 @@ describe('App', () => {
     cy.visit('/')
     cy.contains('Welcome to AutoCRM')
   })
-})
+}) 

@@ -18,8 +18,8 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps):
   }
 
   if (!user) {
-    logger.info('ProtectedRoute: User not authenticated, redirecting to login')
-    return <Navigate to="/" replace />
+    logger.info('ProtectedRoute: User not authenticated, redirecting to auth')
+    return <Navigate to="/auth" replace />
   }
 
   if (requiredRole) {

@@ -23,70 +23,123 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
 
   useEffect((): (() => void) => {
     logger.methodEntry('AuthProvider.useEffect');
+    
     // Get initial session
     void supabase.auth.getSession().then(({ data: { session } }) => {
+      logger.info('Initial session loaded', { 
+        hasSession: !!session,
+        userId: session?.user?.id,
+        userEmail: session?.user?.email,
+        userRole: session?.user?.user_metadata?.role,
+        accessToken: session?.access_token ? 'present' : 'missing',
+        expiresAt: session?.expires_at
+      });
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session): void => {
-      const userId = session?.user?.id;
-      const email = session?.user?.email;
-      logger.info(`Auth state changed: ${event}${userId ? ` for user ${userId}` : ''}`);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session): void => {
+      logger.info('Auth state changed', { 
+        hasSession: !!session,
+        userId: session?.user?.id,
+        userEmail: session?.user?.email,
+        userRole: session?.user?.user_metadata?.role,
+        accessToken: session?.access_token ? 'present' : 'missing',
+        expiresAt: session?.expires_at
+      });
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
     return (): void => {
-      subscription.unsubscribe();
       logger.methodExit('AuthProvider.useEffect');
+      subscription.unsubscribe();
     };
   }, []);
 
   const signIn = async (email: string, password: string): Promise<void> => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    logger.methodEntry('signIn', { email });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
-      logger.error('Error signing in', { error });
+      if (error) {
+        logger.error(error, 'signIn');
+        throw error;
+      }
+
+      setSession(data.session);
+      setUser(data.user);
+      logger.methodExit('signIn', { success: true });
+    } catch (error) {
+      logger.error(error as Error, 'signIn');
       throw error;
     }
   };
 
   const signUp = async (email: string, password: string, fullName: string): Promise<void> => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
+    logger.methodEntry('signUp', { email, fullName });
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            display_name: fullName.split(' ')[0], // Default display name to first name
+            role: 'customer', // Default role for new signups
+          },
         },
-      },
-    });
+      });
 
-    if (error) {
-      logger.error('Error signing up', { error });
+      if (error) {
+        logger.error(error, 'signUp');
+        throw error;
+      }
+
+      setSession(data.session);
+      setUser(data.user);
+      logger.methodExit('signUp', { success: true });
+    } catch (error) {
+      logger.error(error as Error, 'signUp');
       throw error;
     }
   };
 
   const signOut = async (): Promise<void> => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      logger.error('Error signing out', { error });
+    logger.methodEntry('signOut');
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        logger.error(error, 'signOut');
+        throw error;
+      }
+
+      setSession(null);
+      setUser(null);
+      logger.methodExit('signOut', { success: true });
+    } catch (error) {
+      logger.error(error as Error, 'signOut');
       throw error;
     }
   };
 
   const resetPassword = async (email: string): Promise<void> => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
-    if (error) {
-      logger.error('Error resetting password', { error });
+    logger.methodEntry('resetPassword', { email });
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      if (error) {
+        logger.error(error, 'resetPassword');
+        throw error;
+      }
+      logger.methodExit('resetPassword', { success: true });
+    } catch (error) {
+      logger.error(error as Error, 'resetPassword');
       throw error;
     }
   };

@@ -14,12 +14,16 @@ export function AuthPage(): React.ReactElement {
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
 
   // Sample account buttons for demo purposes
-  const handleSampleLogin = async (type: 'customer' | 'service_rep'): Promise<void> => {
+  const handleSampleLogin = async (type: 'customer' | 'service_rep' | 'admin'): Promise<void> => {
     logger.methodEntry('AuthPage.handleSampleLogin', { type });
-    const email = type === 'customer' ? 'customer@example.com' : 'service@example.com';
-    const password = 'Password123!';
+    const credentials = {
+      customer: { email: 'customer1@example.com', password: 'Password123!' },
+      service_rep: { email: 'service1@example.com', password: 'Password123!' },
+      admin: { email: 'admin@example.com', password: 'Password123!' }
+    };
+    
     try {
-      await signIn(email, password);
+      await signIn(credentials[type].email, credentials[type].password);
       logger.info('Sample login successful', { type });
     } catch (error) {
       logger.error('Sample login failed', { error });
@@ -60,20 +64,27 @@ export function AuthPage(): React.ReactElement {
           <div className="text-sm text-gray-500 text-center mb-2">
             Try our demo accounts:
           </div>
-          <div className="flex gap-2 w-full">
+          <div className="flex flex-wrap gap-2 w-full">
             <Button
               variant="outline"
               className="flex-1 text-gray-900"
               onClick={() => handleSampleLogin('customer')}
             >
-              Sign in as Customer
+              Demo Customer
             </Button>
             <Button
               variant="outline"
               className="flex-1 text-gray-900"
               onClick={() => handleSampleLogin('service_rep')}
             >
-              Sign in as Service Rep
+              Demo Service Rep
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1 text-gray-900"
+              onClick={() => handleSampleLogin('admin')}
+            >
+              Demo Admin
             </Button>
           </div>
         </CardFooter>
