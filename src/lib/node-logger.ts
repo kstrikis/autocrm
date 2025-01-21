@@ -1,4 +1,4 @@
-// Browser-friendly logger implementation
+// Node-friendly logger implementation
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 interface LoggerOptions {
@@ -15,13 +15,6 @@ const DEFAULT_OPTIONS: LoggerOptions = {
   redactedKeys: ['password', 'token', 'secret', 'key']
 };
 
-const LOG_COLORS = {
-  debug: '#808080', // gray
-  info: '#00ff00',  // green
-  warn: '#ffa500',  // orange
-  error: '#ff0000'  // red
-};
-
 // Log level hierarchy for filtering
 const LOG_LEVELS: Record<LogLevel, number> = {
   debug: 0,
@@ -31,7 +24,7 @@ const LOG_LEVELS: Record<LogLevel, number> = {
 };
 
 function getLogLevel(): LogLevel {
-  return window.location.hostname === 'localhost' ? 'debug' : 'warn';
+  return process.env.NODE_ENV === 'production' ? 'warn' : 'debug';
 }
 
 function formatTimestamp(): string {
@@ -82,7 +75,7 @@ function safeStringify(obj: unknown, options: LoggerOptions, depth = 0): string 
   return String(obj);
 }
 
-class Logger {
+class NodeLogger {
   private options: LoggerOptions;
 
   constructor(options: LoggerOptions = {}) {
@@ -104,20 +97,19 @@ class Logger {
     if (!this.shouldLog(level)) return;
 
     const formattedMessage = this.formatMessage(level, message, meta);
-    const style = `color: ${LOG_COLORS[level]}`;
 
     switch (level) {
       case 'debug':
-        console.debug(`%c${formattedMessage}`, style);
+        console.debug(formattedMessage);
         break;
       case 'info':
-        console.info(`%c${formattedMessage}`, style);
+        console.info(formattedMessage);
         break;
       case 'warn':
-        console.warn(`%c${formattedMessage}`, style);
+        console.warn(formattedMessage);
         break;
       case 'error':
-        console.error(`%c${formattedMessage}`, style);
+        console.error(formattedMessage);
         break;
     }
   }
@@ -157,7 +149,7 @@ class Logger {
 }
 
 // Export a singleton instance with default options
-export const logger = new Logger();
+export const logger = new NodeLogger();
 
 // Also export the class for custom instances
-export { Logger }; 
+export { NodeLogger }; 

@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { logger } from '@/lib/logger'
 import { v4 as uuidv4 } from 'uuid'
+import type { Database } from '@/types/supabase'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -9,22 +10,18 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error('Missing Supabase environment variables')
 }
 
-logger.info('Initializing Supabase client', { url: supabaseUrl })
-export const supabase = createClient(supabaseUrl, supabaseKey)
-
-const ANIMAL_NAMES = [
-  'Aardvark', 'Bear', 'Cheetah', 'Dolphin', 'Elephant',
-  'Fox', 'Giraffe', 'Hippo', 'Iguana', 'Jaguar',
-  'Kangaroo', 'Lion', 'Monkey', 'Narwhal', 'Octopus',
-  'Penguin', 'Quokka', 'Raccoon', 'Sloth', 'Tiger',
-  'Unicorn', 'Vulture', 'Walrus', 'Xenops', 'Yak',
-  'Zebra'
-]
-
-export function generateAnonymousName(): string {
-  const randomAnimal = ANIMAL_NAMES[Math.floor(Math.random() * ANIMAL_NAMES.length)]
-  return `Anonymous ${randomAnimal}`
-}
+logger.info(`Initializing Supabase client for ${supabaseUrl}`);
+export const supabase = createClient<Database>(
+  supabaseUrl,
+  supabaseKey,
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true
+    }
+  }
+);
 
 // Interface matching GraphQL schema (using camelCase as defined in schema directives)
 export interface User {

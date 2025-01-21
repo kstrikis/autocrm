@@ -96,6 +96,7 @@ export default [
       'build/**/*',
       'node_modules/**/*',
       'src/lib/logger.ts',
+      'src/lib/node-logger.ts',
       '**/test-*.ts',
       '**/scripts/**/*',
       '**/*.{spec,test}.{ts,tsx}',

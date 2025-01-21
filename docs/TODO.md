@@ -1,298 +1,357 @@
-# AutoCRM Development Plan
+```markdown
+# Implementation Plan for AutoCRM
 
-This document outlines the step-by-step implementation plan for AutoCRM, focusing on incremental development with thorough testing at each stage. Each section represents a logical progression in building the system, with detailed tasks and validation steps.
+## **Prerequisites (Already Completed)**
 
-## 1. Project Setup and Infrastructure
+- Project template set up with stack, linting rules, logging system, CI/CD.
+- Basic migration with Supabase initialized.
 
-### Initial Setup
-- [ ] Initialize new repository with TypeScript and Vite
-- [ ] Configure ESLint with custom rules
-- [ ] Set up Prettier for code formatting
-- [ ] Configure TypeScript with strict settings
-- [ ] Add Cypress for testing infrastructure
-- [ ] Set up custom logging system
-- [ ] Create basic CI/CD pipeline with AWS Amplify
+---
 
-### Supabase Configuration
-- [ ] Initialize Supabase project
-- [ ] Set up database schema migrations
-- [ ] Configure Row Level Security policies
-- [ ] Set up Edge Functions environment
-- [ ] Configure authentication settings
-- [ ] Set up vector store with pgvector
-- [ ] Test database connections and security
+## **1. User Authentication Implementation**
 
-### Basic Project Structure
-- [ ] Create directory structure
-- [ ] Set up component organization
-- [ ] Configure routing system
-- [ ] Add state management setup
-- [ ] Create utility functions
-- [ ] Set up test environment
-- [ ] Document project structure
+### **1.1. Supabase Authentication Configuration**
 
-## 2. Core Database Implementation
+- **[ ] Enable Authentication Providers:**
+  - Configure Supabase to allow **Email/Password** sign-up and login.
+  - Set up **Single Sign-On (SSO)** providers (e.g., Google, GitHub):
+    - Obtain client IDs and secrets from each SSO provider.
+    - Input credentials into Supabase Authentication settings.
 
-### Customer Schema
-- [ ] Create customers table
-- [ ] Add indexes for performance
-- [ ] Implement CRUD operations
-- [ ] Write migration scripts
-- [ ] Add RLS policies
-- [ ] Write tests for customer operations
-- [ ] Document customer schema
+- **[ ] Define User Roles and Permissions:**
+  - Create a `user_profiles` table linked to `auth.users` via `user_id`.
+  - Add a `role` column with possible values: `'customer'`, `'service_rep'`, `'admin'`.
+  - Set default roles for new users.
 
-### Ticket Schema
-- [ ] Create tickets table
-- [ ] Set up ticket status enum
-- [ ] Add priority system
-- [ ] Create indexes
-- [ ] Implement CRUD operations
-- [ ] Write migration scripts
-- [ ] Add RLS policies
-- [ ] Write tests for ticket operations
+- **[ ] Implement Row Level Security (RLS):**
+  - Enable RLS on all relevant tables (`tickets`, `user_profiles`, etc.).
+  - Write policies to restrict data access based on user roles:
+    - Customers can access only their own tickets.
+    - Service reps can access tickets assigned to them or unassigned tickets.
+    - Admins have full access.
 
-### Knowledge Base Schema
-- [ ] Create knowledge_base table
-- [ ] Set up vector column
-- [ ] Add content management
-- [ ] Create indexes
-- [ ] Implement CRUD operations
-- [ ] Write migration scripts
-- [ ] Add RLS policies
-- [ ] Test vector operations
+- **[ ] Set Up Edge Function API Auth Tokens:**
+  - Ensure Edge Functions validate Supabase JWT tokens.
+  - Extract user information and roles from tokens within Edge Functions.
+  - Secure Edge Functions with proper authentication checks.
 
-## 3. Authentication System
+### **1.2. Frontend Authentication Implementation**
 
-### Supabase Auth Setup
-- [ ] Configure auth providers
-- [ ] Set up email templates
-- [ ] Configure password policies
-- [ ] Implement user roles
-- [ ] Add auth middleware
-- [ ] Create auth hooks
-- [ ] Write auth tests
+- **[ ] Install Supabase Client Library in Frontend:**
+  - Use `@supabase/supabase-js` for authentication and database operations.
 
-### User Management
-- [ ] Create user profiles
-- [ ] Add role management
-- [ ] Implement permissions
-- [ ] Add user settings
-- [ ] Create admin controls
-- [ ] Write user tests
-- [ ] Document user system
+- **[ ] Build Authentication UI Components:**
+  - **Login Page:**
+    - Email/Password fields.
+    - SSO Buttons for each provider.
+    - Error handling and validation messages.
+  - **Sign-Up Page:**
+    - Registration form for new customers.
+    - Option for service reps to register (or handled by admin).
+  - **Password Reset Flow:**
+    - Forgot Password link.
+    - Password reset email and confirmation pages.
+  - **Front Page Sample Account Buttons:**
+    - **"Sign in as Customer"** button:
+      - Logs in with a sample customer account.
+    - **"Sign in as Service Rep"** button:
+      - Logs in with a sample service rep account.
 
-## 4. Basic Frontend Structure
+- **[ ] Implement Auth State Management:**
+  - Use React Context or state management library (e.g., Redux) to manage auth state.
+  - Listen for auth state changes using Supabase's `onAuthStateChange`.
+  - Store session tokens securely (consider using `localStorage` or `secure HTTP-only cookies`).
 
-### Layout Components
-- [ ] Create base layout
-- [ ] Add navigation system
-- [ ] Implement sidebar
-- [ ] Create header component
-- [ ] Add footer component
-- [ ] Style basic elements
-- [ ] Write component tests
+- **[ ] Role-Based Routing and Access Control:**
+  - Set up protected routes that check for authentication and user role.
+  - Redirect users to appropriate dashboards after login based on role.
+  - Show/hide navigation items and features based on user permissions.
 
-### Authentication UI
-- [ ] Create login page
-- [ ] Add registration flow
-- [ ] Implement password reset
-- [ ] Add profile management
-- [ ] Create auth guards
-- [ ] Style auth pages
-- [ ] Test auth flows
+- **[ ] Logout Functionality:**
+  - Implement logout button that signs users out of Supabase.
+  - Clear auth state and redirect to the login or home page.
 
-## 5. Ticket Management System
+### **1.3. Database Migrations and Schema Updates**
 
-### Ticket Creation
-- [ ] Create ticket form
-- [ ] Add validation logic
-- [ ] Implement file attachments
-- [ ] Add category selection
-- [ ] Create priority system
-- [ ] Write ticket tests
-- [ ] Document ticket creation
+- **[ ] Update Database Schema:**
+  - **`user_profiles` Table:**
+    - `id`: Primary Key.
+    - `user_id`: UUID, references `auth.users`.
+    - `full_name`: Text.
+    - `email`: Text (unique).
+    - `role`: Text (enum of `'customer'`, `'service_rep'`, `'admin'`).
+    - Additional fields as needed.
 
-### Ticket List Views
-- [ ] Create ticket list component
-- [ ] Add filtering system
-- [ ] Implement sorting
-- [ ] Add pagination
-- [ ] Create search functionality
-- [ ] Style list views
-- [ ] Test list operations
+- **[ ] Run Migrations:**
+  - Use Supabase CLI or SQL scripts to apply schema changes.
+  - Verify that tables and columns are correctly created.
 
-### Ticket Detail View
-- [ ] Create ticket detail page
-- [ ] Add status management
-- [ ] Implement comments system
-- [ ] Add history tracking
-- [ ] Create update operations
-- [ ] Style detail view
-- [ ] Write detail tests
+- **[ ] Seed Sample Data:**
+  - Create sample accounts for:
+    - Sample Customer.
+    - Sample Customer Service Rep.
+  - Assign appropriate roles and link to `user_profiles`.
 
-## 6. AI Integration Foundation
+---
 
-### Vector Store Setup
-- [ ] Configure pgvector
-- [ ] Create embedding functions
-- [ ] Set up similarity search
-- [ ] Add indexing system
-- [ ] Implement query functions
-- [ ] Test vector operations
-- [ ] Document vector store
+## **2. Frontend Layout and Navigation**
 
-### Knowledge Base Integration
-- [ ] Create knowledge ingestion
-- [ ] Add document processing
-- [ ] Implement embedding generation
-- [ ] Create search functions
-- [ ] Add relevance scoring
-- [ ] Test knowledge base
-- [ ] Document integration
+### **2.1. Design Main Layout Components**
 
-### Basic AI Pipeline
-- [ ] Set up LangChain
-- [ ] Create prompt templates
-- [ ] Add response generation
-- [ ] Implement context injection
-- [ ] Create fallback system
-- [ ] Test AI responses
-- [ ] Document AI system
+- **[ ] Header Component:**
+  - Logo and branding.
+  - Navigation menu.
+  - User avatar and dropdown with profile and logout options.
 
-## 7. Automated Ticket Processing
+- **[ ] Sidebar Navigation (if applicable):**
+  - Dynamic links based on user role.
+  - Sections for Tickets, Dashboard, Knowledge Base, etc.
 
-### Initial Analysis
-- [ ] Create analysis pipeline
-- [ ] Add category detection
-- [ ] Implement priority scoring
-- [ ] Add sentiment analysis
-- [ ] Create routing logic
-- [ ] Test analysis system
-- [ ] Document analysis
+- **[ ] Footer Component:**
+  - Company information.
+  - Links to Terms of Service, Privacy Policy.
 
-### Response Generation
-- [ ] Create response pipeline
-- [ ] Add context retrieval
-- [ ] Implement response templates
-- [ ] Add personalization
-- [ ] Create quality checks
-- [ ] Test responses
-- [ ] Document generation
+### **2.2. Implement Routing**
 
-### Human Review System
-- [ ] Create review interface
-- [ ] Add approval workflow
-- [ ] Implement feedback loop
-- [ ] Add quality metrics
-- [ ] Create review dashboard
-- [ ] Test review system
-- [ ] Document workflow
+- **[ ] Set Up Routes Using React Router (or preferred routing library):**
+  - Public Routes:
+    - Home Page.
+    - Login.
+    - Sign-Up.
+  - Protected Routes:
+    - **Customer Dashboard**
+    - **Service Rep Dashboard**
+    - **Admin Dashboard** (if applicable)
+  - **[ ] Implement Route Guards:**
+    - Redirect unauthenticated users to the login page.
+    - Prevent authenticated users from accessing login or sign-up pages.
 
-## 8. Real-time Features
+### **2.3. Responsive Design and Theming**
 
-### Live Updates
-- [ ] Set up Supabase realtime
-- [ ] Add ticket subscriptions
-- [ ] Implement status updates
-- [ ] Create notification system
-- [ ] Add presence indicators
-- [ ] Test realtime features
-- [ ] Document realtime
+- **[ ] Apply a Design System or Component Library:**
+  - Use Material UI, Ant Design, or Tailwind CSS for consistent styling.
+- **[ ] Ensure Mobile Responsiveness:**
+  - Test layouts on various screen sizes.
+  - Optimize navigation for mobile devices.
 
-### Notification System
-- [ ] Create notification types
-- [ ] Add delivery system
-- [ ] Implement preferences
-- [ ] Add email integration
-- [ ] Create notification UI
-- [ ] Test notifications
-- [ ] Document system
+---
 
-## 9. Analytics and Reporting
+## **3. Implement Basic Site Features**
 
-### Basic Metrics
-- [ ] Create metrics collection
-- [ ] Add performance tracking
-- [ ] Implement dashboards
-- [ ] Add export functions
-- [ ] Create visualizations
-- [ ] Test analytics
-- [ ] Document metrics
+### **3.1. Customer Features**
 
-### AI Performance Tracking
-- [ ] Add response tracking
-- [ ] Create success metrics
-- [ ] Implement feedback loop
-- [ ] Add performance alerts
-- [ ] Create AI dashboard
-- [ ] Test tracking
-- [ ] Document system
+- **[ ] Ticket Creation Form:**
+  - Fields for subject, description, attachments.
+  - Category and priority selection.
+  - Validation and error handling.
 
-## 10. System Integration
+- **[ ] View and Track Tickets:**
+  - List of submitted tickets.
+  - Ticket statuses: Open, In Progress, Resolved.
+  - Search and filter options.
 
-### Email Integration
-- [ ] Set up email service
-- [ ] Add template system
-- [ ] Implement threading
-- [ ] Create email parser
-- [ ] Add bounce handling
-- [ ] Test email system
-- [ ] Document integration
+- **[ ] Access Knowledge Base:**
+  - List of articles and FAQs.
+  - Search functionality.
 
-### Calendar Integration
-- [ ] Set up calendar service
-- [ ] Add event creation
-- [ ] Implement scheduling
-- [ ] Create reminders
-- [ ] Add availability
-- [ ] Test calendar
-- [ ] Document system
+### **3.2. Customer Service Rep Features**
 
-## 11. Performance Optimization
+- **[ ] Ticket Queue Management:**
+  - View unassigned tickets.
+  - Claim or assign tickets.
+  - Filter tickets by status, priority.
 
-### Frontend Optimization
-- [ ] Implement code splitting
-- [ ] Add lazy loading
-- [ ] Optimize bundle size
-- [ ] Implement caching
-- [ ] Add performance monitoring
-- [ ] Test optimizations
-- [ ] Document improvements
+- **[ ] Ticket Detail View and Update:**
+  - View customer ticket details.
+  - Add internal notes and public responses.
+  - Change ticket status and priority.
 
-### Backend Optimization
-- [ ] Optimize queries
-- [ ] Add caching layer
-- [ ] Implement rate limiting
-- [ ] Add load balancing
-- [ ] Create backup system
-- [ ] Test performance
-- [ ] Document optimizations
+- **[ ] Communication with Customers:**
+  - Send messages to customers.
+  - View conversation history.
 
-## 12. Documentation and Deployment
+### **3.3. Shared Features**
 
-### User Documentation
-- [ ] Create user guides
-- [ ] Add API documentation
-- [ ] Create tutorials
-- [ ] Add troubleshooting
-- [ ] Create FAQs
-- [ ] Test documentation
-- [ ] Review and update
+- **[ ] Notifications:**
+  - Real-time updates on ticket changes.
+  - Alert users of new messages or status updates.
 
-### Deployment Pipeline
-- [ ] Set up staging
-- [ ] Create production env
-- [ ] Add monitoring
-- [ ] Implement rollback
-- [ ] Create backup system
-- [ ] Test deployment
-- [ ] Document process
+- **[ ] Profile Management:**
+  - View and edit personal information.
+  - Change password.
 
-## Notes
-- Each task should be completed and tested before moving to the next
-- All changes must include appropriate logging
-- Tests must be written before implementing features
-- Documentation should be updated with each completed section
-- Regular security audits should be performed
-- Performance metrics should be collected throughout development
+---
+
+## **4. Backend API Development**
+
+### **4.1. Edge Functions for Business Logic**
+
+- **[ ] Create Edge Functions for Complex Operations:**
+  - Ticket assignment algorithms.
+  - Notifications dispatch.
+  - Any server-side processing not handled directly by Supabase APIs.
+
+- **[ ] Secure Edge Functions:**
+  - Validate JWT tokens.
+  - Check user roles and permissions within functions.
+
+### **4.2. Database Operations**
+
+- **[ ] Define SQL Queries and Views:**
+  - For complex data retrieval.
+  - Aggregated data for dashboards.
+
+- **[ ] Implement Stored Procedures (if necessary):**
+  - For transactional operations.
+  - To encapsulate business logic.
+
+---
+
+## **5. Testing**
+
+### **5.1. Authentication Flow Testing**
+
+- **[ ] Write End-to-End Tests with Cypress:**
+  - Sign-up process.
+  - Login with Email/Password.
+  - Login with SSO providers.
+  - Logout functionality.
+
+- **[ ] Test Role-Based Access:**
+  - Ensure customers cannot access service rep features and vice versa.
+
+- **[ ] Test Front Page Sample Account Buttons:**
+  - Verify that clicking the buttons logs in the correct sample account.
+
+### **5.2. RLS Policy Testing**
+
+- **[ ] Write Tests to Validate RLS Policies:**
+  - Ensure users can only access permitted data.
+  - Attempts to access unauthorized data should fail.
+
+- **[ ] Security Audits:**
+  - Check for any vulnerabilities in authentication and data access.
+
+---
+
+## **6. Documentation**
+
+### **6.1. Developer Documentation**
+
+- **[ ] Document Authentication Setup:**
+  - Steps to configure auth providers.
+  - How roles and permissions are implemented.
+
+- **[ ] API Documentation:**
+  - Endpoints and their usage.
+  - Edge Function interfaces.
+
+- **[ ] Code Comments and README Files:**
+  - Explain complex logic.
+  - Instructions for setting up the project locally.
+
+### **6.2. User Guides**
+
+- **[ ] Write Guides for End Users:**
+  - How to sign up and log in.
+  - Navigating the dashboard.
+  - Creating and managing tickets.
+
+---
+
+## **7. Deployment**
+
+### **7.1. Update CI/CD Pipeline**
+
+- **[ ] Integrate New Steps for Authentication:**
+  - Ensure environment variables for auth providers are correctly set.
+  - Secure handling of API keys and secrets.
+
+- **[ ] Automated Testing in Pipeline:**
+  - Run tests upon each commit.
+  - Prevent deployment if tests fail.
+
+### **7.2. Deploy to Staging Environment**
+
+- **[ ] Test Authentication in Staging:**
+  - Verify that all auth flows work as expected.
+  - Check RLS policies in a production-like environment.
+
+### **7.3. Deploy to Production**
+
+- **[ ] Final Checks Before Production Deployment:**
+  - Ensure all secrets and environment variables are set.
+  - Back up any existing data.
+  - Monitor logs for any post-deployment issues.
+
+---
+
+## **8. Next Steps: Advanced Features**
+
+### **8.1. AI Integration Planning**
+
+- **[ ] Plan Integration with Pinecone and LangChain:**
+  - Define use cases for AI (e.g., automated responses, ticket categorization).
+  - Set up Pinecone vector database for storing embeddings.
+  - Integrate LangChain for AI workflows.
+
+### **8.2. Knowledge Base Enhancement**
+
+- **[ ] Implement Content Management System (CMS):**
+  - Allow admins to add/edit knowledge base articles.
+  - Enable versioning and approval workflows.
+
+### **8.3. Real-Time Features**
+
+- **[ ] Implement Real-Time Communications:**
+  - Enable live chat between customers and service reps.
+  - Use Supabase's real-time capabilities for instant updates.
+
+### **8.4. Analytics and Reporting**
+
+- **[ ] Develop Dashboard for Admins:**
+  - Key metrics: ticket volume, response times, customer satisfaction.
+  - AI-generated summaries and insights.
+
+---
+
+## **9. Project Management Notes**
+
+- **[ ] Agile Development:**
+  - Break down tasks into sprints.
+  - Regularly review progress and adjust priorities.
+
+- **[ ] Collaboration and Code Reviews:**
+  - Use GitHub for version control.
+  - Enforce code reviews before merging.
+
+- **[ ] Continuous Learning:**
+  - Team members to familiarize themselves with Supabase auth and RLS.
+  - Stay updated with best practices in authentication and security.
+
+---
+
+## **10. Regular Maintenance and Updates**
+
+- **[ ] Security Audits:**
+  - Perform periodic checks for vulnerabilities.
+  - Update dependencies to address security patches.
+
+- **[ ] Performance Monitoring:**
+  - Use monitoring tools to track app performance.
+  - Optimize queries and code as needed.
+
+- **[ ] User Feedback:**
+  - Collect feedback from test users.
+  - Iterate on UI/UX improvements.
+
+---
+
+# **Summary**
+
+This implementation plan focuses on establishing a robust authentication system integrated with Supabase, setting up role-based access control, and creating a foundational frontend for both customers and service representatives. The plan proceeds to implement basic site features essential for the AutoCRM application, followed by testing, documentation, and deployment steps. Advanced features and AI integrations are planned for subsequent phases, ensuring a scalable and secure application development lifecycle.
+
+---
+
+**Note:** Each section should be thoroughly tested and validated before proceeding to the next to ensure system integrity and security. Regular code reviews and adherence to best practices are essential throughout the development process.
+```

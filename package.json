@@ -13,10 +13,11 @@
     "cypress:run": "ELECTRON_ENABLE_LOGGING=1 start-server-and-test dev http://localhost:5173 'cypress run'",
     "cypress:component": "ELECTRON_ENABLE_LOGGING=1 cypress run --component",
     "cypress:e2e": "ELECTRON_ENABLE_LOGGING=1 start-server-and-test dev http://localhost:5173 'cypress run --e2e'",
-    "test:e2e": "start-server-and-test dev http://localhost:5173 'cypress run'",
-    "test:component": "cypress run --component",
+    "test:e2e": "ELECTRON_ENABLE_LOGGING=1 start-server-and-test dev http://localhost:5173 'cypress run'",
+    "test:component": "ELECTRON_ENABLE_LOGGING=1 cypress run --component",
     "pretest": "npm run build",
-    "test": "npm run test:component && npm run test:e2e"
+    "test": "npm run test:component && npm run test:e2e",
+    "seed:users": "tsx scripts/seed-users.ts"
   },
   "dependencies": {
     "@aws-amplify/backend-graphql": "^0.3.2",
@@ -30,6 +31,7 @@
     "@radix-ui/react-select": "^2.1.4",
     "@radix-ui/react-separator": "^1.1.1",
     "@radix-ui/react-slot": "^1.1.1",
+    "@radix-ui/react-tabs": "^1.1.2",
     "@radix-ui/react-toast": "^1.2.4",
     "@supabase/supabase-js": "^2.47.15",
     "@tanstack/react-virtual": "^3.11.2",
@@ -63,7 +65,7 @@
     "@typescript-eslint/parser": "^8.20.0",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
-    "aws-cdk": "^2.138.0",
+    "aws-cdk": "^2.176.0",
     "aws-cdk-lib": "^2.138.0",
     "concurrently": "^9.1.2",
     "constructs": "^10.3.0",
