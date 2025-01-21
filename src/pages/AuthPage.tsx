@@ -10,7 +10,7 @@ import { logger } from '@/lib/logger';
 
 export function AuthPage(): React.ReactElement {
   logger.methodEntry('AuthPage');
-  const { user, loading } = useAuth();
+  const { user, loading, signIn } = useAuth();
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
 
   // Sample account buttons for demo purposes
@@ -19,7 +19,6 @@ export function AuthPage(): React.ReactElement {
     const email = type === 'customer' ? 'customer@example.com' : 'service@example.com';
     const password = 'Password123!';
     try {
-      const { signIn } = useAuth();
       await signIn(email, password);
       logger.info('Sample login successful', { type });
     } catch (error) {
@@ -64,14 +63,14 @@ export function AuthPage(): React.ReactElement {
           <div className="flex gap-2 w-full">
             <Button
               variant="outline"
-              className="flex-1"
+              className="flex-1 text-gray-900"
               onClick={() => handleSampleLogin('customer')}
             >
               Sign in as Customer
             </Button>
             <Button
               variant="outline"
-              className="flex-1"
+              className="flex-1 text-gray-900"
               onClick={() => handleSampleLogin('service_rep')}
             >
               Sign in as Service Rep

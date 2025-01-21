@@ -48,12 +48,13 @@ function safeStringify(obj: unknown, options: LoggerOptions, depth = 0): string 
   if (typeof obj === 'string') return obj;
   if (typeof obj === 'number' || typeof obj === 'boolean') return obj.toString();
   if (obj instanceof Error) {
-    return JSON.stringify({
+    const error = {
       name: obj.name,
       message: obj.message,
       stack: obj.stack,
       cause: obj.cause ? safeStringify(obj.cause, options, depth + 1) : undefined
-    });
+    };
+    return JSON.stringify(error);
   }
   if (obj instanceof Date) return obj.toISOString();
   if (Array.isArray(obj)) {
@@ -66,15 +67,17 @@ function safeStringify(obj: unknown, options: LoggerOptions, depth = 0): string 
   }
   if (typeof obj === 'object') {
     const redactedKeys = options.redactedKeys || DEFAULT_OPTIONS.redactedKeys!;
-    return JSON.stringify(obj, (key, value) => {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
       if (redactedKeys.includes(key.toLowerCase())) {
-        return '[REDACTED]';
+        result[key] = '[REDACTED]';
+      } else {
+        result[key] = typeof value === 'object' && value !== null
+          ? safeStringify(value, options, depth + 1)
+          : value;
       }
-      if (typeof value === 'object' && value !== null) {
-        return safeStringify(value, options, depth + 1);
-      }
-      return value;
-    });
+    }
+    return JSON.stringify(result);
   }
   return String(obj);
 }

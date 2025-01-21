@@ -95,6 +95,7 @@ export function SignUpForm(): React.ReactElement {
           id="password"
           type="password"
           placeholder="Enter your password"
+          autoComplete="new-password"
           {...register('password')}
         />
         {errors.password && (
@@ -108,6 +109,7 @@ export function SignUpForm(): React.ReactElement {
           id="confirmPassword"
           type="password"
           placeholder="Confirm your password"
+          autoComplete="new-password"
           {...register('confirmPassword')}
         />
         {errors.confirmPassword && (

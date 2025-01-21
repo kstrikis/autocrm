@@ -72,6 +72,7 @@ export function LoginForm(): React.ReactElement {
           id="password"
           type="password"
           placeholder="Enter your password"
+          autoComplete="current-password"
           {...register('password')}
         />
         {errors.password && (

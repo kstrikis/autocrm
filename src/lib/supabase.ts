@@ -10,7 +10,7 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error('Missing Supabase environment variables')
 }
 
-logger.info('Initializing Supabase client', { url: supabaseUrl })
+logger.info(`Initializing Supabase client for ${supabaseUrl}`);
 export const supabase = createClient<Database>(
   supabaseUrl,
   supabaseKey,
@@ -21,7 +21,7 @@ export const supabase = createClient<Database>(
       detectSessionInUrl: true
     }
   }
-)
+);
 
 const ANIMAL_NAMES = [
   'Aardvark', 'Bear', 'Cheetah', 'Dolphin', 'Elephant',
