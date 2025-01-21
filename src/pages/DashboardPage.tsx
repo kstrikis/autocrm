@@ -1,11 +1,11 @@
 import React, { useEffect } from 'react'
-import { useUser } from '@/lib/contexts/UserContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { logger } from '@/lib/logger'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 
 export function DashboardPage(): React.ReactElement {
   logger.methodEntry('DashboardPage')
-  const { user } = useUser()
+  const { user } = useAuth()
 
   useEffect((): (() => void) => {
     logger.methodEntry('DashboardPage.useEffect')
@@ -16,7 +16,7 @@ export function DashboardPage(): React.ReactElement {
     <div className="container mx-auto p-4">
       <Card className="mb-4">
         <CardHeader>
-          <CardTitle>Welcome, {user?.name}!</CardTitle>
+          <CardTitle>Welcome, {user?.user_metadata.full_name}!</CardTitle>
           <CardDescription>This is your personal dashboard</CardDescription>
         </CardHeader>
         <CardContent>

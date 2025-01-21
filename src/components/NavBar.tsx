@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { logger } from '@/lib/logger'
-import { useUser } from '@/lib/contexts/UserContext'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface Props {
   className?: string
@@ -10,7 +10,7 @@ interface Props {
 export function NavBar({ className = '' }: Props): React.ReactElement {
   logger.methodEntry('NavBar')
   const navigate = useNavigate()
-  const { user, logout } = useUser()
+  const { user, signOut } = useAuth()
 
   useEffect((): (() => void) => {
     logger.methodEntry('NavBar.useEffect')
@@ -20,7 +20,7 @@ export function NavBar({ className = '' }: Props): React.ReactElement {
   const handleLogout = async (): Promise<void> => {
     logger.methodEntry('NavBar.handleLogout')
     try {
-      await logout()
+      await signOut()
       void navigate('/')
       logger.methodExit('NavBar.handleLogout')
     } catch (error) {
@@ -34,7 +34,7 @@ export function NavBar({ className = '' }: Props): React.ReactElement {
         <span className="text-xl font-bold">AutoCRM</span>
         {user && (
           <span className="text-sm text-gray-600">
-            Welcome, {user.name}!
+            Welcome, {user.user_metadata.full_name}!
           </span>
         )}
       </div>
