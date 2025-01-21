@@ -2,6 +2,7 @@ import React, { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { logger } from '@/lib/logger'
 import { useAuth } from '@/contexts/AuthContext'
+import { Button } from '@/components/ui/button'
 
 interface Props {
   className?: string
@@ -10,7 +11,7 @@ interface Props {
 export function NavBar({ className = '' }: Props): React.ReactElement {
   logger.methodEntry('NavBar')
   const navigate = useNavigate()
-  const { user, signOut } = useAuth()
+  const { user, loading, signOut } = useAuth()
 
   useEffect((): (() => void) => {
     logger.methodEntry('NavBar.useEffect')
@@ -21,7 +22,7 @@ export function NavBar({ className = '' }: Props): React.ReactElement {
     logger.methodEntry('NavBar.handleLogout')
     try {
       await signOut()
-      void navigate('/')
+      void navigate('/auth')
       logger.methodExit('NavBar.handleLogout')
     } catch (error) {
       logger.error(error instanceof Error ? error : new Error('Failed to logout'), 'NavBar.handleLogout')
@@ -32,26 +33,33 @@ export function NavBar({ className = '' }: Props): React.ReactElement {
     <nav className={`flex justify-between items-center p-4 ${className}`}>
       <div className="flex items-center space-x-4">
         <span className="text-xl font-bold">AutoCRM</span>
-        {user && (
-          <span className="text-sm text-gray-600">
-            Welcome, {user.user_metadata.full_name}!
+        {!loading && user && (
+          <span className="text-sm text-gray-600" data-testid="welcome-message">
+            Welcome, {user.user_metadata?.full_name || user.email}!
           </span>
         )}
       </div>
-      {user && (
-        <button
-          onClick={(): void => {
-            void handleLogout()
-          }}
-          aria-label="Logout"
-          className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-        >
-          Logout
-        </button>
+      {!loading && user && (
+        <div className="flex items-center space-x-4">
+          <Button
+            variant="outline"
+            onClick={() => navigate('/settings')}
+            className="text-gray-600 hover:text-gray-900"
+          >
+            Settings
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => void handleLogout()}
+            className="text-sm"
+          >
+            Logout
+          </Button>
+        </div>
       )}
     </nav>
   )
 
   logger.methodExit('NavBar')
   return result
-} 
+}

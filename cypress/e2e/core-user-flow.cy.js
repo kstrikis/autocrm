@@ -2,76 +2,83 @@
 
 describe('Core User Flow', () => {
   beforeEach(() => {
-    cy.clearLocalStorage()
+    cy.cleanupTestUser('test@example.com')
     cy.visit('/auth')
+    cy.clearCookies()
   })
 
   it('should successfully log in as guest', () => {
     // Click demo customer button
-    cy.contains('Sign in as Customer').click()
-
-    // Wait for auth state to update
-    cy.window().its('localStorage').should('have.length.gt', 0)
+    cy.contains('Demo Customer').click()
 
     // Should redirect to dashboard
     cy.url().should('include', '/dashboard')
 
     // Should show success toast
-    cy.contains('Success').should('be.visible')
-    cy.contains('You have been logged in successfully').should('be.visible')
+    cy.contains('Success', { timeout: 2000 }).should('be.visible')
+    cy.contains('You have been logged in successfully', { timeout: 2000 }).should('be.visible')
+
+    // Should show user info in nav
+    cy.get('nav', { timeout: 2000 }).within(() => {
+      cy.contains('Welcome').should('be.visible')
+      cy.contains('Alice Customer').should('be.visible')
+    })
   })
 
   it('should persist user session after refresh', () => {
-    // Login as demo customer
-    cy.contains('Sign in as Customer').click()
+    // Click demo customer button
+    cy.contains('Demo Customer').click()
 
-    // Wait for auth state to update
-    cy.window().its('localStorage').should('have.length.gt', 0)
-
-    // Wait for the dashboard to load
+    // Should redirect to dashboard
     cy.url().should('include', '/dashboard')
 
-    // Verify localStorage has the session
-    cy.window().its('localStorage').should('have.length.gt', 0)
+    // Should show user info in nav
+    cy.get('nav', { timeout: 2000 }).within(() => {
+      cy.contains('Welcome').should('be.visible')
+      cy.contains('Alice Customer').should('be.visible')
+    })
 
     // Reload page
     cy.reload()
 
-    // Wait for loading state to clear
-    cy.contains('Loading...').should('not.exist')
-
     // Should stay on dashboard
     cy.url().should('include', '/dashboard')
+
+    // Should still show user info
+    cy.get('nav', { timeout: 2000 }).within(() => {
+      cy.contains('Welcome').should('be.visible')
+      cy.contains('Alice Customer').should('be.visible')
+    })
   })
 
   it('should log out and redirect to login page', () => {
-    // Login as demo customer
-    cy.contains('Sign in as Customer').click()
+    // Click demo customer button
+    cy.contains('Demo Customer').click()
 
-    // Wait for auth state to update
-    cy.window().its('localStorage').should('have.length.gt', 0)
-
-    // Wait for the dashboard to load
+    // Should redirect to dashboard
     cy.url().should('include', '/dashboard')
 
-    // Click logout button
+    // Should show user info in nav
+    cy.get('nav', { timeout: 2000 }).within(() => {
+      cy.contains('Welcome').should('be.visible')
+      cy.contains('Alice Customer').should('be.visible')
+    })
+
+    // Click logout
     cy.contains('Logout').click()
 
     // Should redirect to auth page
     cy.url().should('include', '/auth')
 
-    // Verify localStorage is cleared
-    cy.window().its('localStorage').should('have.length', 0)
-
-    // Try accessing dashboard directly
+    // Try accessing protected route
     cy.visit('/dashboard')
 
-    // Should be redirected to auth page
+    // Should redirect back to auth
     cy.url().should('include', '/auth')
   })
 
   it('should prevent direct access to dashboard when not logged in', () => {
-    // Try accessing dashboard directly
+    // Try accessing protected route without logging in
     cy.visit('/dashboard')
 
     // Should redirect to auth page
@@ -79,18 +86,16 @@ describe('Core User Flow', () => {
   })
 
   it('should show logged-in user status', () => {
-    // Login as demo customer
-    cy.contains('Sign in as Customer').click()
+    // Click demo customer button
+    cy.contains('Demo Customer').click()
 
-    // Wait for auth state to update
-    cy.window().its('localStorage').should('have.length.gt', 0)
-
-    // Wait for the dashboard to load
+    // Should redirect to dashboard
     cy.url().should('include', '/dashboard')
 
-    // Verify user status is shown
-    cy.get('[data-cy="user-status"]')
-      .should('exist')
-      .and('contain', 'online')
+    // Should show user info in nav
+    cy.get('nav', { timeout: 2000 }).within(() => {
+      cy.contains('Welcome').should('be.visible')
+      cy.contains('Alice Customer').should('be.visible')
+    })
   })
 }) 

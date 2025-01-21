@@ -3,21 +3,23 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import zxcvbn from 'zxcvbn';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/lib/logger';
+import { Progress } from '@/components/ui/progress';
 
 const signUpSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string()
     .min(8, 'Password must be at least 8 characters')
-    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-    .regex(/[0-9]/, 'Password must contain at least one number')
-    .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
+    .refine((password) => {
+      const result = zxcvbn(password);
+      return result.score >= 3;
+    }, 'Password is too weak. Try adding numbers, symbols, or making it longer.'),
   confirmPassword: z.string(),
   fullName: z.string().min(2, 'Full name must be at least 2 characters'),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -32,14 +34,30 @@ export function SignUpForm(): React.ReactElement {
   const { signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [passwordStrength, setPasswordStrength] = React.useState(0);
+  const [passwordFeedback, setPasswordFeedback] = React.useState('');
 
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<SignUpFormData>({
     resolver: zodResolver(signUpSchema),
   });
+
+  // Watch password field for strength calculation
+  const password = watch('password');
+  React.useEffect(() => {
+    if (password) {
+      const result = zxcvbn(password);
+      setPasswordStrength(result.score * 25);
+      setPasswordFeedback(result.feedback.warning || result.feedback.suggestions[0] || '');
+    } else {
+      setPasswordStrength(0);
+      setPasswordFeedback('');
+    }
+  }, [password]);
 
   const onSubmit = async (data: SignUpFormData): Promise<void> => {
     logger.methodEntry('SignUpForm.onSubmit');
@@ -67,6 +85,7 @@ export function SignUpForm(): React.ReactElement {
         <Label htmlFor="fullName">Full Name</Label>
         <Input
           id="fullName"
+          name="fullName"
           type="text"
           placeholder="Enter your full name"
           {...register('fullName')}
@@ -80,6 +99,7 @@ export function SignUpForm(): React.ReactElement {
         <Label htmlFor="email">Email</Label>
         <Input
           id="email"
+          name="email"
           type="email"
           placeholder="Enter your email"
           {...register('email')}
@@ -93,11 +113,26 @@ export function SignUpForm(): React.ReactElement {
         <Label htmlFor="password">Password</Label>
         <Input
           id="password"
+          name="password"
           type="password"
           placeholder="Enter your password"
           autoComplete="new-password"
           {...register('password')}
         />
+        {password && (
+          <div className="space-y-2">
+            <Progress value={passwordStrength} className="h-2" />
+            <p className="text-sm text-gray-500">
+              Password strength: {passwordStrength === 0 ? 'Very Weak' : 
+                                passwordStrength <= 25 ? 'Weak' :
+                                passwordStrength <= 50 ? 'Fair' :
+                                passwordStrength <= 75 ? 'Strong' : 'Very Strong'}
+            </p>
+            {passwordFeedback && (
+              <p className="text-sm text-amber-500">{passwordFeedback}</p>
+            )}
+          </div>
+        )}
         {errors.password && (
           <p className="text-sm text-red-500">{errors.password.message}</p>
         )}
@@ -107,6 +142,7 @@ export function SignUpForm(): React.ReactElement {
         <Label htmlFor="confirmPassword">Confirm Password</Label>
         <Input
           id="confirmPassword"
+          name="confirmPassword"
           type="password"
           placeholder="Confirm your password"
           autoComplete="new-password"
