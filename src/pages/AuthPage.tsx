@@ -14,13 +14,13 @@ export function AuthPage(): React.ReactElement {
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
 
   // Sample account buttons for demo purposes
-  const handleSampleLogin = async (type: 'customer' | 'service_rep') => {
+  const handleSampleLogin = async (type: 'customer' | 'service_rep'): Promise<void> => {
     logger.methodEntry('AuthPage.handleSampleLogin', { type });
     const email = type === 'customer' ? 'customer@example.com' : 'service@example.com';
     const password = 'Password123!';
     try {
-      // Your signIn function from AuthContext
-      // await signIn(email, password);
+      const { signIn } = useAuth();
+      await signIn(email, password);
       logger.info('Sample login successful', { type });
     } catch (error) {
       logger.error('Sample login failed', { error });

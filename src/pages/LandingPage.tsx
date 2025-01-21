@@ -12,9 +12,11 @@ export function LandingPage(): React.ReactElement {
   }
 
   if (user) {
+    logger.methodExit('LandingPage');
     return <Navigate to="/dashboard" replace />
   }
 
   // Redirect to auth page if not logged in
+  logger.methodExit('LandingPage');
   return <Navigate to="/auth" replace />
 } 

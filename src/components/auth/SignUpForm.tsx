@@ -6,7 +6,7 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/lib/logger';
 
@@ -41,7 +41,7 @@ export function SignUpForm(): React.ReactElement {
     resolver: zodResolver(signUpSchema),
   });
 
-  const onSubmit = async (data: SignUpFormData) => {
+  const onSubmit = async (data: SignUpFormData): Promise<void> => {
     logger.methodEntry('SignUpForm.onSubmit');
     try {
       await signUp(data.email, data.password, data.fullName);
@@ -49,7 +49,7 @@ export function SignUpForm(): React.ReactElement {
         title: 'Success',
         description: 'Your account has been created. Please check your email for verification.',
       });
-      navigate('/dashboard');
+      void navigate('/dashboard');
     } catch (error) {
       logger.error('Error signing up', { error });
       toast({

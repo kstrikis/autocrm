@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
-import { logger } from '../lib/logger';
+import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
 
 interface AuthContextType {
   session: Session | null;
@@ -15,31 +15,36 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: React.ReactNode }): React.ReactElement {
+  logger.methodEntry('AuthProvider');
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  useEffect((): (() => void) => {
+    logger.methodEntry('AuthProvider.useEffect');
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    void supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session): void => {
       logger.info('Auth state changed', { event: _event });
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return (): void => {
+      subscription.unsubscribe();
+      logger.methodExit('AuthProvider.useEffect');
+    };
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string): Promise<void> => {
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -51,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = async (email: string, password: string, fullName: string): Promise<void> => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -68,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signOut = async () => {
+  const signOut = async (): Promise<void> => {
     const { error } = await supabase.auth.signOut();
     if (error) {
       logger.error('Error signing out', { error });
@@ -76,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const resetPassword = async (email: string) => {
+  const resetPassword = async (email: string): Promise<void> => {
     const { error } = await supabase.auth.resetPasswordForEmail(email);
     if (error) {
       logger.error('Error resetting password', { error });
@@ -94,14 +99,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     resetPassword,
   };
 
-  return (
+  const result = (
     <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
+
+  logger.methodExit('AuthProvider');
+  return result;
 }
 
-export function useAuth() {
+export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');

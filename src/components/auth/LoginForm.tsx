@@ -6,7 +6,7 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/lib/logger';
 
@@ -31,7 +31,7 @@ export function LoginForm(): React.ReactElement {
     resolver: zodResolver(loginSchema),
   });
 
-  const onSubmit = async (data: LoginFormData) => {
+  const onSubmit = async (data: LoginFormData): Promise<void> => {
     logger.methodEntry('LoginForm.onSubmit');
     try {
       await signIn(data.email, data.password);
@@ -39,7 +39,7 @@ export function LoginForm(): React.ReactElement {
         title: 'Success',
         description: 'You have been logged in successfully.',
       });
-      navigate('/dashboard');
+      void navigate('/dashboard');
     } catch (error) {
       logger.error('Error signing in', { error });
       toast({
