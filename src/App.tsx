@@ -7,13 +7,13 @@ import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { LandingPage } from '@/pages/LandingPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { Toaster } from '@/components/ui/toaster'
-import { UserProvider } from '@/lib/contexts/UserContext'
+import { AuthProvider } from '@/contexts/AuthContext'
 
 export function App(): React.ReactElement {
   logger.methodEntry('App')
   const result = (
     <ErrorBoundary>
-      <UserProvider>
+      <AuthProvider>
         <Router>
           <Routes>
             <Route element={<Layout />}>
@@ -30,7 +30,7 @@ export function App(): React.ReactElement {
           </Routes>
         </Router>
         <Toaster />
-      </UserProvider>
+      </AuthProvider>
     </ErrorBoundary>
   )
   logger.methodExit('App')
