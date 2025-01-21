@@ -39,14 +39,14 @@ create policy "Users can update their own profile"
   on public.user_profiles for update
   using (auth.uid() = user_id)
   with check (
-    case
-      when auth.role() = 'authenticated' and old.role = new.role then true
-      when exists (
-        select 1 from public.user_profiles
-        where user_id = auth.uid() and role = 'admin'
-      ) then true
-      else false
-    end
+    -- Regular users can only update non-role fields
+    (role IS NOT DISTINCT FROM (SELECT role FROM public.user_profiles WHERE user_id = auth.uid()))
+    OR
+    -- Admins can update everything
+    EXISTS (
+      SELECT 1 FROM public.user_profiles
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
   );
 
 -- Create function to handle user profile creation on auth.user creation
