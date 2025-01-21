@@ -17,7 +17,12 @@
     "test:component": "ELECTRON_ENABLE_LOGGING=1 cypress run --component",
     "pretest": "npm run build",
     "test": "npm run test:component && npm run test:e2e",
-    "seed:users": "tsx scripts/seed-users.ts"
+    "seed:users": "tsx scripts/seed-users.ts",
+    "seed:serve:local": "supabase functions serve seed-users --env-file ./supabase/functions/seed-users/.env.local",
+    "seed:serve:prod": "supabase functions serve seed-users --env-file ./supabase/functions/seed-users/.env",
+    "seed:deploy": "supabase functions deploy seed-users",
+    "seed:run:local": "curl -i --location --request POST \"http://localhost:54321/functions/v1/seed-users\" --header \"Authorization: Bearer $SEED_ADMIN_TOKEN\" --header \"Content-Type: application/json\"",
+    "seed:run:prod": "curl -i --location --request POST \"$SUPABASE_URL/functions/v1/seed-users\" --header \"Authorization: Bearer $SEED_ADMIN_TOKEN\" --header \"Content-Type: application/json\""
   },
   "dependencies": {
     "@aws-amplify/backend-graphql": "^0.3.2",

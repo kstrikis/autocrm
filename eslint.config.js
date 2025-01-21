@@ -6,6 +6,26 @@ import enforceLogging from './eslint-rules/enforce-logging.js'
 
 export default [
   {
+    files: ['supabase/functions/**/*.{ts,tsx}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      parser: (await import('@typescript-eslint/parser')).default,
+      parserOptions: {
+        project: null,  // Disable project reference for Deno files
+        projectService: false  // Disable project service for Deno files
+      }
+    },
+    plugins: {
+      '@typescript-eslint': (await import('@typescript-eslint/eslint-plugin')).default,
+    },
+    rules: {
+      'enforce-logging/enforce-logging': 'off',
+      '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/no-floating-promises': 'off'
+    }
+  },
+  {
     files: ['amplify/**/*.{ts,tsx,js,jsx}'],
     languageOptions: {
       ecmaVersion: 'latest',
@@ -106,7 +126,8 @@ export default [
       '**/*.cy.{ts,tsx}',
       'cypress.config.ts',
       'src/components/ui/**',
-      'amplify/**/*'
+      'amplify/**/*',
+      'supabase/functions/**/*'
     ],
     languageOptions: {
       ecmaVersion: 'latest',

@@ -36,3 +36,7 @@ amplifyconfiguration*
 */.env
 */.env*
 env.json
+
+# Cypress
+cypress/screenshots/
+cypress/videos/
