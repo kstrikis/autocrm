@@ -1,5 +1,29 @@
 # AI Working Notes
 
+## Latest Changes
+- Fixed TypeScript type issues in TicketQueue component without changing functionality
+  - Added proper type casting for Supabase response data
+  - Fixed status and priority type issues using Exclude utility type
+  - Kept unused state variables for future functionality
+- Previously:
+  - Added new pink-themed logout button variant
+  - Implemented dashboard layout and navigation
+  - Added customer and ticket management features
+  - Set up basic routing structure
+
+## Next Steps
+- Implement remaining e2e tests
+- Complete the service representative dashboard features
+- Add ticket management functionality
+- Implement customer management features
+
+## Technical Decisions
+- Using AWS Amplify Gen 2 (ampx) for backend services
+- Implementing strict logging standards with logger.info, logger.methodEntry, logger.methodExit
+- Using TypeScript for type safety
+- Using shadcn/ui for component library
+- GraphQL with camelCase naming convention using @graphql({"name": }) aliases
+
 ## Authentication Implementation (2024-01-20)
 
 ### Initial Changes Made

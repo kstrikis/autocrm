@@ -1,31 +1,22 @@
-import React, { useEffect } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
-import { logger } from '@/lib/logger'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import React from 'react';
+import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
+import { useAuth } from '@/contexts/AuthContext';
+import { logger } from '@/lib/logger';
 
-export function DashboardPage(): React.ReactElement {
-  logger.methodEntry('DashboardPage')
-  const { user } = useAuth()
+export const DashboardPage: React.FC = () => {
+  logger.methodEntry('DashboardPage');
+  const { user } = useAuth();
 
-  useEffect((): (() => void) => {
-    logger.methodEntry('DashboardPage.useEffect')
-    return () => logger.methodExit('DashboardPage.useEffect')
-  }, [])
-
-  const result = (
-    <div className="container mx-auto p-4">
-      <Card className="mb-4">
-        <CardHeader>
-          <CardTitle>Welcome, {user?.user_metadata.full_name}!</CardTitle>
-          <CardDescription>This is your personal dashboard</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p>More features coming soon!</p>
-        </CardContent>
-      </Card>
+  return (
+    <div>
+      <h1 className="text-2xl font-semibold text-gray-900">Welcome, {user?.user_metadata.full_name}!</h1>
+      <p className="mt-2 text-sm text-gray-600">Here's what's happening today.</p>
+      
+      <div className="mt-6">
+        <DashboardMetrics />
+      </div>
     </div>
-  )
+  );
+};
 
-  logger.methodExit('DashboardPage')
-  return result
-} 
+export default DashboardPage; 
