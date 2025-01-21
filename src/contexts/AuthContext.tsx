@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
@@ -20,11 +20,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const loadingTimeoutRef = useRef<NodeJS.Timeout>();
+  const mountedRef = useRef(true);
 
   // Function to handle session updates
   const handleSession = async (newSession: Session | null): Promise<void> => {
     logger.methodEntry('handleSession', { hasSession: !!newSession });
     try {
+      if (!mountedRef.current) return;
+
+      // Clear any existing loading timeout
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+        loadingTimeoutRef.current = undefined;
+      }
+
       if (newSession) {
         setSession(newSession);
         setUser(newSession.user);
@@ -45,32 +55,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
       }
     } catch (error) {
       logger.error('Error handling session', { error });
-      setSession(null);
-      setUser(null);
+      if (mountedRef.current) {
+        setSession(null);
+        setUser(null);
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
     logger.methodExit('handleSession');
   };
 
   useEffect((): (() => void) => {
     logger.methodEntry('AuthProvider.useEffect');
-    let mounted = true;
-    let loadingTimeout: NodeJS.Timeout;
+    mountedRef.current = true;
 
     // Set a maximum loading time
-    loadingTimeout = setTimeout(() => {
-      if (mounted && loading) {
+    loadingTimeoutRef.current = setTimeout(() => {
+      if (mountedRef.current && loading) {
         logger.warn('Auth loading timed out, resetting state');
         setLoading(false);
         setSession(null);
         setUser(null);
       }
-    }, 10000); // 10 second timeout
+    }, 15000); // 15 second timeout
 
     // Get initial session
     void supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return;
+      if (!mountedRef.current) return;
       logger.info('Initial session loaded', { 
         hasSession: !!session,
         userId: session?.user?.id,
@@ -82,9 +95,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
       void handleSession(session);
     });
 
+    // Set up session refresh interval
+    const refreshInterval = setInterval(() => {
+      if (session) {
+        void handleSession(session);
+      }
+    }, 4 * 60 * 1000); // Refresh every 4 minutes
+
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
+      if (!mountedRef.current) return;
       logger.info('Auth state changed', { 
         hasSession: !!session,
         userId: session?.user?.id,
@@ -98,8 +118,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
 
     return (): void => {
       logger.methodExit('AuthProvider.useEffect');
-      mounted = false;
-      clearTimeout(loadingTimeout);
+      mountedRef.current = false;
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+      clearInterval(refreshInterval);
       subscription.unsubscribe();
     };
   }, []);

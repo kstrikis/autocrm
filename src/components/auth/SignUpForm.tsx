@@ -84,11 +84,10 @@ export function SignUpForm(): React.ReactElement {
       <div className="space-y-2">
         <Label htmlFor="fullName">Full Name</Label>
         <Input
-          id="fullName"
-          name="fullName"
           type="text"
-          placeholder="Enter your full name"
+          placeholder="Full Name"
           {...register('fullName')}
+          className="w-full"
         />
         {errors.fullName && (
           <p className="text-sm text-red-500">{errors.fullName.message}</p>
@@ -98,11 +97,10 @@ export function SignUpForm(): React.ReactElement {
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input
-          id="email"
-          name="email"
           type="email"
-          placeholder="Enter your email"
+          placeholder="Email"
           {...register('email')}
+          className="w-full"
         />
         {errors.email && (
           <p className="text-sm text-red-500">{errors.email.message}</p>
@@ -112,12 +110,10 @@ export function SignUpForm(): React.ReactElement {
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
         <Input
-          id="password"
-          name="password"
           type="password"
-          placeholder="Enter your password"
-          autoComplete="new-password"
+          placeholder="Password"
           {...register('password')}
+          className="w-full"
         />
         {password && (
           <div className="space-y-2">
@@ -141,12 +137,10 @@ export function SignUpForm(): React.ReactElement {
       <div className="space-y-2">
         <Label htmlFor="confirmPassword">Confirm Password</Label>
         <Input
-          id="confirmPassword"
-          name="confirmPassword"
           type="password"
-          placeholder="Confirm your password"
-          autoComplete="new-password"
+          placeholder="Confirm Password"
           {...register('confirmPassword')}
+          className="w-full"
         />
         {errors.confirmPassword && (
           <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>

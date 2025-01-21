@@ -49,7 +49,7 @@ export function NavBar({ className = '' }: Props): React.ReactElement {
             Settings
           </Button>
           <Button
-            variant="destructive"
+            variant="logout"
             onClick={() => void handleLogout()}
             className="text-sm"
           >
