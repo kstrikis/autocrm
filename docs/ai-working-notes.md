@@ -1,5 +1,69 @@
 # AI Working Notes
 
+## Latest Changes (2024-01-23)
+
+### Authentication and Loading State Improvements
+- Removed redundant `withAuth` HOC since we already have `ProtectedRoute` for auth guarding
+- Updated auth tests to properly test protected route access instead of auth page access
+- Added proper loading state handling with new `LoadingSpinner` component
+- Simplified `AuthContext` implementation by removing unnecessary complexity
+- Fixed TypeScript return types and logging in `AuthContext`
+
+### Database and Migration Updates
+- Updated RLS policies in user_profiles migration:
+  - Service reps and admins can view all profiles
+  - Customers can only view their own profile
+  - Simplified admin role checks using JWT metadata
+- Enhanced tickets table migration:
+  - Added proper default values and constraints
+  - Improved column definitions with proper types
+  - Added GraphQL field name aliases
+  - Updated RLS policies for better security
+  - Fixed grant permissions for authenticated users
+
+### Logging Improvements
+- Enhanced TicketQueue logging:
+  - Added detailed auth state logging
+  - Added query parameter logging
+  - Improved error logging with context
+  - Added debug logging for query results
+- Updated logger implementation:
+  - Added Cypress test environment detection
+  - Improved object stringification
+  - Enhanced error object handling
+  - Added JSON parsing for string logs
+
+### UI Improvements
+- Updated toast component styling:
+  - Improved destructive toast variant colors
+  - Added background color to close button
+- Removed unused CustomersPage component
+- Updated DashboardPage to show different content based on user role:
+  - Service reps see DashboardMetrics
+  - Customers see CustomerDashboardMetrics
+
+### Test Updates
+- Fixed auth.cy.js test:
+  - Updated test flow to check protected routes
+  - Added proper loading state checks
+  - Improved error message verification
+  - Added support tickets page verification
+
+### Code Organization
+- Keeping auth-related components focused on their specific responsibilities:
+  - `AuthPage`: Public route for login/signup
+  - `ProtectedRoute`: Guards protected routes
+  - `AuthContext`: Manages auth state
+  - `LoadingSpinner`: Reusable loading UI component
+
+## Next Steps
+- Consider adding more comprehensive error handling in auth flows
+- Add more test coverage for edge cases
+- Consider implementing rate limiting for auth attempts
+- Add session timeout handling
+- Optimize bundle size (some chunks exceed 500KB)
+- Consider splitting TicketQueue component for better maintainability
+
 ## Latest Changes
 - Fixed TypeScript type issues in TicketQueue component without changing functionality
   - Added proper type casting for Supabase response data
@@ -437,3 +501,27 @@ All test implementations are complete but require fixes:
 3. [ ] Implement better session cleanup in tests
 4. [ ] Add more comprehensive error logging
 5. [ ] Consider implementing session recovery mechanisms 
+
+## Authentication and Loading State Improvements
+
+- Removed redundant `withAuth` HOC since we already have `ProtectedRoute` for auth guarding
+- Updated auth tests to properly test protected route access instead of auth page access
+- Added proper loading state handling with new `LoadingSpinner` component
+- Simplified `AuthContext` implementation by removing unnecessary complexity
+- Fixed TypeScript return types and logging in `AuthContext`
+- Improved test coverage for authentication flows
+
+## Code Organization
+
+- Keeping auth-related components focused on their specific responsibilities:
+  - `AuthPage`: Public route for login/signup
+  - `ProtectedRoute`: Guards protected routes
+  - `AuthContext`: Manages auth state
+  - `LoadingSpinner`: Reusable loading UI component
+
+## Next Steps
+
+- Consider adding more comprehensive error handling in auth flows
+- Add more test coverage for edge cases
+- Consider implementing rate limiting for auth attempts
+- Add session timeout handling 

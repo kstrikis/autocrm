@@ -34,9 +34,14 @@ create index user_profiles_last_seen_at_idx on public.user_profiles (last_seen_a
 alter table public.user_profiles enable row level security;
 
 -- Create policies
-create policy "User profiles are viewable by authenticated users"
+create policy "User profiles are viewable by service reps and admins"
   on public.user_profiles for select
-  using (auth.role() = 'authenticated');
+  using (
+    -- Service reps and admins can view all profiles
+    (auth.jwt() -> 'user_metadata' ->> 'role')::user_role in ('service_rep', 'admin')
+    -- Customers can only view their own profile
+    or id = auth.uid()
+  );
 
 create policy "Users can insert their own profile"
   on public.user_profiles for insert
@@ -50,10 +55,7 @@ create policy "Users can update their own profile"
     (role = (select role from public.user_profiles where id = auth.uid()))
     OR
     -- Admins can update everything
-    EXISTS (
-      SELECT 1 FROM public.user_profiles
-      WHERE id = auth.uid() AND role = 'admin'
-    )
+    (auth.jwt() -> 'user_metadata' ->> 'role')::user_role = 'admin'
   );
 
 -- Create trigger for updated_at

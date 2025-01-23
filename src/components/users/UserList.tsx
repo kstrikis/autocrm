@@ -18,10 +18,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase';
+import type { UserProfile, Ticket } from '@/lib/database.types';
 
 const ITEMS_PER_PAGE = 10;
 
-interface CustomerWithStats {
+interface UserWithStats {
   id: string;
   fullName: string;
   totalTickets: number;
@@ -31,63 +32,69 @@ interface CustomerWithStats {
   createdAt: string;
 }
 
-type SortField = 'name' | 'openTickets' | 'totalTickets' | 'lastTicket' | 'joined';
+type SortField = 'name' | 'openTickets' | 'totalTickets' | 'lastTicket' | 'joined' | 'role';
 type SortOrder = 'asc' | 'desc';
+type RoleFilter = 'all' | 'customer' | 'service_rep' | 'admin';
 
-export function CustomerList(): React.ReactElement {
-  logger.methodEntry('CustomerList');
+export function UserList(): React.ReactElement {
+  logger.methodEntry('UserList');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [customers, setCustomers] = useState<CustomerWithStats[]>([]);
+  const [users, setUsers] = useState<UserWithStats[]>([]);
   const [sortField, setSortField] = useState<SortField>('lastTicket');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [hasOpenTicketsFilter, setHasOpenTicketsFilter] = useState<'all' | 'yes' | 'no'>('all');
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
 
   useEffect(() => {
-    async function fetchCustomers(): Promise<void> {
+    async function fetchUsers(): Promise<void> {
       try {
         setLoading(true);
-        logger.info('CustomerList: Fetching customers', { page, sortField, sortOrder, hasOpenTicketsFilter });
+        logger.info('UserList: Fetching users', { page, sortField, sortOrder, hasOpenTicketsFilter, roleFilter });
 
-        // First get the customer profiles with their ticket counts
+        // First get all user profiles with their ticket counts
         let query = supabase
           .from('user_profiles')
           .select(`
             id,
-            full_name,
+            fullName:full_name,
             role,
-            created_at,
-            tickets!tickets_customer_id_fkey (
+            createdAt:created_at,
+            tickets!left!tickets_customer_id_fkey (
               id,
               status,
-              created_at
+              createdAt:created_at
             )
           `)
-          .eq('role', 'customer')
           .range((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE - 1);
 
-        const { data: rawCustomers, error: supabaseError } = await query;
+        // Only apply role filter if not "all"
+        if (roleFilter !== 'all') {
+          query = query.eq('role', roleFilter);
+        }
+
+        const { data: rawUsers, error: supabaseError } = await query;
 
         if (supabaseError) {
           throw supabaseError;
         }
 
         // Transform the data to include ticket statistics
-        const transformedCustomers: CustomerWithStats[] = rawCustomers.map(customer => {
-          const tickets = customer.tickets || [];
-          const openTickets = tickets.filter(t => !['resolved', 'closed'].includes(t.status)).length;
+        const transformedUsers: UserWithStats[] = (rawUsers as unknown as UserProfile[]).map(user => {
+          const tickets = user.tickets || [];
+          const openTickets = tickets.filter((t: Ticket) => !['resolved', 'closed'].includes(t.status)).length;
           const lastTicket = tickets.length > 0 
-            ? tickets.reduce((latest, ticket) => 
-                latest.created_at > ticket.created_at ? latest : ticket
-              ).created_at
+            ? tickets.reduce((latest: Ticket, ticket: Ticket) => 
+                latest.createdAt > ticket.createdAt ? latest : ticket
+              ).createdAt
             : null;
 
           return {
-            id: customer.id,
-            fullName: customer.full_name,
-            role: customer.role,
-            createdAt: customer.created_at,
+            id: user.id,
+            fullName: user.fullName,
+            role: user.role,
+            createdAt: user.createdAt,
             totalTickets: tickets.length,
             openTickets,
             lastTicketDate: lastTicket
@@ -95,15 +102,15 @@ export function CustomerList(): React.ReactElement {
         });
 
         // Apply filters
-        let filteredCustomers = transformedCustomers;
+        let filteredUsers = transformedUsers;
         if (hasOpenTicketsFilter !== 'all') {
-          filteredCustomers = transformedCustomers.filter(c => 
+          filteredUsers = transformedUsers.filter(c => 
             hasOpenTicketsFilter === 'yes' ? c.openTickets > 0 : c.openTickets === 0
           );
         }
 
         // Apply sorting
-        filteredCustomers.sort((a, b) => {
+        filteredUsers.sort((a, b) => {
           let comparison = 0;
           switch (sortField) {
             case 'name':
@@ -123,22 +130,25 @@ export function CustomerList(): React.ReactElement {
             case 'joined':
               comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
               break;
+            case 'role':
+              comparison = a.role.localeCompare(b.role);
+              break;
           }
           return sortOrder === 'asc' ? comparison : -comparison;
         });
 
-        setCustomers(filteredCustomers);
-        logger.info('CustomerList: Customers fetched successfully', { count: filteredCustomers.length });
+        setUsers(filteredUsers);
+        logger.info('UserList: Users fetched successfully', { count: filteredUsers.length });
       } catch (err) {
-        logger.error('CustomerList: Error fetching customers', { error: err });
+        logger.error('UserList: Error fetching users', { error: err });
         setError(err as Error);
       } finally {
         setLoading(false);
       }
     }
 
-    void fetchCustomers();
-  }, [page, sortField, sortOrder, hasOpenTicketsFilter]);
+    void fetchUsers();
+  }, [page, sortField, sortOrder, hasOpenTicketsFilter, roleFilter]);
 
   const handleSort = (field: SortField): void => {
     if (field === sortField) {
@@ -150,18 +160,33 @@ export function CustomerList(): React.ReactElement {
   };
 
   if (loading) {
-    logger.info('CustomerList: Loading customers...');
-    return <div>Loading customers...</div>;
+    logger.info('UserList: Loading users...');
+    return <div>Loading users...</div>;
   }
 
   if (error) {
-    logger.error('CustomerList: Error loading customers', { error });
-    return <div>Error loading customers</div>;
+    logger.error('UserList: Error loading users', { error });
+    return <div>Error loading users</div>;
   }
 
   const result = (
     <div className="space-y-4">
       <div className="flex gap-4">
+        <Select
+          value={roleFilter}
+          onValueChange={(value: RoleFilter) => setRoleFilter(value)}
+        >
+          <SelectTrigger className="w-[180px] text-gray-900">
+            <SelectValue placeholder="Filter by role" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-gray-900">All Users</SelectItem>
+            <SelectItem value="customer" className="text-gray-900">Customers</SelectItem>
+            <SelectItem value="service_rep" className="text-gray-900">Service Reps</SelectItem>
+            <SelectItem value="admin" className="text-gray-900">Admins</SelectItem>
+          </SelectContent>
+        </Select>
+
         <Select
           value={hasOpenTicketsFilter}
           onValueChange={(value: 'all' | 'yes' | 'no') => setHasOpenTicketsFilter(value)}
@@ -170,7 +195,7 @@ export function CustomerList(): React.ReactElement {
             <SelectValue placeholder="Filter by open tickets" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all" className="text-gray-900">All Customers</SelectItem>
+            <SelectItem value="all" className="text-gray-900">All Users</SelectItem>
             <SelectItem value="yes" className="text-gray-900">Has Open Tickets</SelectItem>
             <SelectItem value="no" className="text-gray-900">No Open Tickets</SelectItem>
           </SelectContent>
@@ -184,7 +209,13 @@ export function CustomerList(): React.ReactElement {
               className="cursor-pointer"
               onClick={() => handleSort('name')}
             >
-              Customer Name {sortField === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
+              Name {sortField === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
+            </TableHead>
+            <TableHead 
+              className="cursor-pointer"
+              onClick={() => handleSort('role')}
+            >
+              Role {sortField === 'role' && (sortOrder === 'asc' ? '↑' : '↓')}
             </TableHead>
             <TableHead 
               className="cursor-pointer"
@@ -213,24 +244,33 @@ export function CustomerList(): React.ReactElement {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {customers.map((customer) => (
-            <TableRow key={customer.id}>
-              <TableCell>{customer.fullName}</TableCell>
+          {users.map((user) => (
+            <TableRow key={user.id}>
+              <TableCell>{user.fullName}</TableCell>
               <TableCell>
-                {customer.openTickets > 0 ? (
-                  <Badge className="bg-orange-500">{customer.openTickets}</Badge>
+                <Badge variant={
+                  user.role === 'admin' ? 'destructive' :
+                  user.role === 'service_rep' ? 'secondary' :
+                  'default'
+                }>
+                  {user.role}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                {user.openTickets > 0 ? (
+                  <Badge className="bg-orange-500">{user.openTickets}</Badge>
                 ) : (
                   <span>0</span>
                 )}
               </TableCell>
-              <TableCell>{customer.totalTickets}</TableCell>
+              <TableCell>{user.totalTickets}</TableCell>
               <TableCell>
-                {customer.lastTicketDate 
-                  ? new Date(customer.lastTicketDate).toLocaleDateString()
+                {user.lastTicketDate 
+                  ? new Date(user.lastTicketDate).toLocaleDateString()
                   : 'Never'
                 }
               </TableCell>
-              <TableCell>{new Date(customer.createdAt).toLocaleDateString()}</TableCell>
+              <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -249,7 +289,7 @@ export function CustomerList(): React.ReactElement {
         <Button
           variant="outline"
           onClick={() => setPage((p) => p + 1)}
-          disabled={!customers || customers.length < ITEMS_PER_PAGE}
+          disabled={users.length < ITEMS_PER_PAGE}
           className="text-gray-900"
         >
           Next
@@ -258,6 +298,6 @@ export function CustomerList(): React.ReactElement {
     </div>
   );
 
-  logger.methodExit('CustomerList');
+  logger.methodExit('UserList');
   return result;
 } 

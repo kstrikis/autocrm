@@ -72,6 +72,22 @@ export function TicketQueue(): React.ReactElement {
     async function fetchTickets(): Promise<void> {
       try {
         setLoading(true);
+        
+        // Log the current auth state
+        const { data: { session }, error: authError } = await supabase.auth.getSession();
+        logger.info('TicketQueue: Auth state', { 
+          hasSession: !!session,
+          userId: session?.user?.id,
+          userMetadata: session?.user?.user_metadata,
+          appMetadata: session?.user?.app_metadata,
+          role: session?.user?.role
+        });
+
+        if (authError) {
+          logger.error('TicketQueue: Auth error', { error: authError });
+          throw authError;
+        }
+
         logger.info('TicketQueue: Fetching tickets', { page, statusFilter, priorityFilter });
 
         let query = supabase
@@ -82,25 +98,80 @@ export function TicketQueue(): React.ReactElement {
             status,
             priority,
             created_at,
-            customer:customer_id(id, full_name),
-            assigned:assigned_to(id, full_name)
+            customer:user_profiles!customer_id(id, full_name),
+            assigned:user_profiles!assigned_to(id, full_name)
           `)
           .order('created_at', { ascending: false })
           .range((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE - 1);
 
+        // Log the query parameters instead of SQL
+        logger.debug('TicketQueue: Base query params', { 
+          page,
+          offset: (page - 1) * ITEMS_PER_PAGE,
+          limit: ITEMS_PER_PAGE
+        });
+
         if (statusFilter.length > 0 && statusFilter[0] !== 'all') {
           query = query.in('status', statusFilter);
+          logger.debug('TicketQueue: Added status filter', { statusFilter });
         }
 
         if (priorityFilter.length > 0 && priorityFilter[0] !== 'all') {
           query = query.in('priority', priorityFilter);
+          logger.debug('TicketQueue: Added priority filter', { priorityFilter });
         }
 
-        const { data, error: supabaseError } = await query;
+        // Log the final query parameters
+        logger.debug('TicketQueue: Final query params', {
+          page,
+          offset: (page - 1) * ITEMS_PER_PAGE,
+          limit: ITEMS_PER_PAGE,
+          statusFilter,
+          priorityFilter
+        });
+
+        const { data, error: supabaseError, count } = await query;
 
         if (supabaseError) {
+          logger.error('TicketQueue: Supabase error', { 
+            error: supabaseError,
+            errorMessage: supabaseError.message,
+            errorDetails: supabaseError.details,
+            errorHint: supabaseError.hint,
+            queryParams: {
+              page,
+              offset: (page - 1) * ITEMS_PER_PAGE,
+              limit: ITEMS_PER_PAGE,
+              statusFilter,
+              priorityFilter,
+              filters: {
+                status: statusFilter.length > 0 ? statusFilter : 'all',
+                priority: priorityFilter.length > 0 ? priorityFilter : 'all'
+              }
+            }
+          });
           throw supabaseError;
         }
+
+        // Log the raw response with more details
+        logger.debug('TicketQueue: Raw response', { 
+          dataCount: data?.length,
+          totalCount: count,
+          firstRecord: data?.[0],
+          hasNulls: data?.some(d => !d.customer || !d.assigned),
+          allData: data,
+          queryParams: {
+            page,
+            offset: (page - 1) * ITEMS_PER_PAGE,
+            limit: ITEMS_PER_PAGE,
+            statusFilter,
+            priorityFilter,
+            filters: {
+              status: statusFilter.length > 0 ? statusFilter : 'all',
+              priority: priorityFilter.length > 0 ? priorityFilter : 'all'
+            }
+          }
+        });
 
         // Transform the data to match our interface
         const transformedTickets = (data as unknown as SupabaseTicket[]).map(ticket => ({
@@ -114,9 +185,25 @@ export function TicketQueue(): React.ReactElement {
         }));
 
         setTickets(transformedTickets);
-        logger.info('TicketQueue: Tickets fetched successfully', { count: transformedTickets.length });
+        logger.debug('TicketQueue: Tickets fetched successfully', { 
+          count: transformedTickets.length,
+          tickets: transformedTickets.map(t => ({
+            id: t.id,
+            title: t.title,
+            status: t.status,
+            customerName: t.customerName
+          }))
+        });
       } catch (err) {
-        logger.error('TicketQueue: Error fetching tickets', { error: err });
+        logger.error('TicketQueue: Error fetching tickets', { 
+          error: err,
+          errorStack: (err as Error).stack,
+          context: {
+            page,
+            statusFilter,
+            priorityFilter
+          }
+        });
         setError(err as Error);
       } finally {
         setLoading(false);

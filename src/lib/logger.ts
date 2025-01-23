@@ -1,4 +1,10 @@
 // Browser-friendly logger implementation
+declare global {
+  interface Window {
+    Cypress?: unknown;
+  }
+}
+
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 interface LoggerOptions {
@@ -31,7 +37,11 @@ const LOG_LEVELS: Record<LogLevel, number> = {
 };
 
 function getLogLevel(): LogLevel {
-  return window.location.hostname === 'localhost' ? 'info' : 'warn';
+  // Check if running in Cypress test environment
+  if (typeof window !== 'undefined' && (window as any).Cypress) {
+    return 'info';
+  }
+  return window.location.hostname === 'localhost' ? 'debug' : 'warn';
 }
 
 function formatTimestamp(): string {
@@ -45,7 +55,15 @@ function safeStringify(obj: unknown, options: LoggerOptions, depth = 0): string 
 
   if (obj === null) return 'null';
   if (obj === undefined) return 'undefined';
-  if (typeof obj === 'string') return obj;
+  if (typeof obj === 'string') {
+    // Try to parse stringified JSON before returning
+    try {
+      const parsed = JSON.parse(obj);
+      return JSON.stringify(parsed, null, 2);
+    } catch {
+      return obj;
+    }
+  }
   if (typeof obj === 'number' || typeof obj === 'boolean') return obj.toString();
   if (obj instanceof Error) {
     const error = {
@@ -54,16 +72,25 @@ function safeStringify(obj: unknown, options: LoggerOptions, depth = 0): string 
       stack: obj.stack,
       cause: obj.cause ? safeStringify(obj.cause, options, depth + 1) : undefined
     };
-    return JSON.stringify(error);
+    return JSON.stringify(error, null, 2);
   }
   if (obj instanceof Date) return obj.toISOString();
   if (Array.isArray(obj)) {
     const maxLength = options.maxArrayLength || DEFAULT_OPTIONS.maxArrayLength!;
-    const items = obj.slice(0, maxLength).map(item => safeStringify(item, options, depth + 1));
+    const items = obj.slice(0, maxLength).map(item => {
+      if (typeof item === 'string') {
+        try {
+          return JSON.parse(item);
+        } catch {
+          return item;
+        }
+      }
+      return item;
+    });
     if (obj.length > maxLength) {
       items.push(`... ${obj.length - maxLength} more items`);
     }
-    return `[${items.join(', ')}]`;
+    return JSON.stringify(items, null, 2);
   }
   if (typeof obj === 'object') {
     const redactedKeys = options.redactedKeys || DEFAULT_OPTIONS.redactedKeys!;
@@ -72,12 +99,10 @@ function safeStringify(obj: unknown, options: LoggerOptions, depth = 0): string 
       if (redactedKeys.includes(key.toLowerCase())) {
         result[key] = '[REDACTED]';
       } else {
-        result[key] = typeof value === 'object' && value !== null
-          ? safeStringify(value, options, depth + 1)
-          : value;
+        result[key] = value;
       }
     }
-    return JSON.stringify(result);
+    return JSON.stringify(result, null, 2);
   }
   return String(obj);
 }
@@ -139,6 +164,16 @@ class Logger {
         context
       });
     } else {
+      // Try to parse if it's a stringified error object
+      try {
+        const parsedError = JSON.parse(error);
+        if (parsedError && typeof parsedError === 'object' && 'name' in parsedError && 'message' in parsedError) {
+          this.log('error', `Error${context ? ` in ${context}` : ''}: ${parsedError.message}`, parsedError);
+          return;
+        }
+      } catch {
+        // Not a JSON string, continue with normal handling
+      }
       this.log('error', error, typeof context === 'object' ? context : { context });
     }
   }

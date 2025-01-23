@@ -15,11 +15,10 @@ import { Progress } from '@/components/ui/progress';
 const signUpSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string()
-    .min(8, 'Password must be at least 8 characters')
     .refine((password) => {
       const result = zxcvbn(password);
       return result.score >= 3;
-    }, 'Password is too weak. Try adding numbers, symbols, or making it longer.'),
+    }, 'Password is too weak'),
   confirmPassword: z.string(),
   fullName: z.string().min(2, 'Full name must be at least 2 characters'),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -35,7 +34,6 @@ export function SignUpForm(): React.ReactElement {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [passwordStrength, setPasswordStrength] = React.useState(0);
-  const [passwordFeedback, setPasswordFeedback] = React.useState('');
 
   const {
     register,
@@ -52,10 +50,8 @@ export function SignUpForm(): React.ReactElement {
     if (password) {
       const result = zxcvbn(password);
       setPasswordStrength(result.score * 25);
-      setPasswordFeedback(result.feedback.warning || result.feedback.suggestions[0] || '');
     } else {
       setPasswordStrength(0);
-      setPasswordFeedback('');
     }
   }, [password]);
 
@@ -115,6 +111,9 @@ export function SignUpForm(): React.ReactElement {
           {...register('password')}
           className="w-full"
         />
+        {errors.password && (
+          <p className="text-sm text-red-500">{errors.password.message}</p>
+        )}
         {password && (
           <div className="space-y-2">
             <Progress value={passwordStrength} className="h-2" />
@@ -124,13 +123,7 @@ export function SignUpForm(): React.ReactElement {
                                 passwordStrength <= 50 ? 'Fair' :
                                 passwordStrength <= 75 ? 'Strong' : 'Very Strong'}
             </p>
-            {passwordFeedback && (
-              <p className="text-sm text-amber-500">{passwordFeedback}</p>
-            )}
           </div>
-        )}
-        {errors.password && (
-          <p className="text-sm text-red-500">{errors.password.message}</p>
         )}
       </div>
 

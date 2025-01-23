@@ -2,6 +2,7 @@ import React from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { logger } from '@/lib/logger'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -14,7 +15,7 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps):
 
   if (loading) {
     logger.info('ProtectedRoute: Loading user state')
-    return <div>Loading...</div>
+    return <LoadingSpinner fullScreen size="lg" />
   }
 
   if (!user) {

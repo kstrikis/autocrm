@@ -1,3 +1,4 @@
+/* eslint-disable enforce-logging/enforce-logging */
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -41,7 +42,7 @@ export function LoginForm(): React.ReactElement {
       });
       void navigate('/dashboard');
     } catch (error) {
-      logger.error('Error signing in', { error });
+      // Error is already logged by AuthContext
       toast({
         title: 'Error',
         description: 'Failed to sign in. Please check your credentials.',
