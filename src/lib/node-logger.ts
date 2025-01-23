@@ -24,7 +24,7 @@ const LOG_LEVELS: Record<LogLevel, number> = {
 };
 
 function getLogLevel(): LogLevel {
-  return process.env.NODE_ENV === 'production' ? 'warn' : 'debug';
+  return process.env.NODE_ENV === 'production' ? 'warn' : 'info';
 }
 
 function formatTimestamp(): string {

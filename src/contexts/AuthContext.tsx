@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useRef } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
@@ -20,201 +20,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout>();
-  const mountedRef = useRef(true);
-
-  // Function to handle session updates
-  const handleSession = async (newSession: Session | null): Promise<void> => {
-    logger.methodEntry('handleSession', { hasSession: !!newSession });
-    try {
-      if (!mountedRef.current) return;
-
-      // Clear any existing loading timeout
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-        loadingTimeoutRef.current = undefined;
-      }
-
-      if (newSession) {
-        setSession(newSession);
-        setUser(newSession.user);
-      } else {
-        // If no session, try to refresh it
-        const { data: { session: refreshedSession }, error } = await supabase.auth.getSession();
-        if (error) {
-          logger.error('Error refreshing session', { error });
-          throw error;
-        }
-        if (refreshedSession) {
-          setSession(refreshedSession);
-          setUser(refreshedSession.user);
-        } else {
-          setSession(null);
-          setUser(null);
-        }
-      }
-    } catch (error) {
-      logger.error('Error handling session', { error });
-      if (mountedRef.current) {
-        setSession(null);
-        setUser(null);
-      }
-    } finally {
-      if (mountedRef.current) {
-        setLoading(false);
-      }
-    }
-    logger.methodExit('handleSession');
-  };
 
   useEffect((): (() => void) => {
     logger.methodEntry('AuthProvider.useEffect');
-    mountedRef.current = true;
-
-    // Set a maximum loading time
-    loadingTimeoutRef.current = setTimeout(() => {
-      if (mountedRef.current && loading) {
-        logger.warn('Auth loading timed out, resetting state');
-        setLoading(false);
-        setSession(null);
-        setUser(null);
-      }
-    }, 15000); // 15 second timeout
-
-    // Get initial session
-    void supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mountedRef.current) return;
-      logger.info('Initial session loaded', { 
-        hasSession: !!session,
-        userId: session?.user?.id,
-        userEmail: session?.user?.email,
-        userRole: session?.user?.user_metadata?.role,
-        accessToken: session?.access_token ? 'present' : 'missing',
-        expiresAt: session?.expires_at
-      });
-      void handleSession(session);
-    });
-
-    // Set up session refresh interval
-    const refreshInterval = setInterval(() => {
-      if (session) {
-        void handleSession(session);
-      }
-    }, 4 * 60 * 1000); // Refresh every 4 minutes
+    // Fetch the initial session
+    void (async (): Promise<void> => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      setUser(session?.user || null);
+      setLoading(false);
+    })();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mountedRef.current) return;
-      logger.info('Auth state changed', { 
-        hasSession: !!session,
-        userId: session?.user?.id,
-        userEmail: session?.user?.email,
-        userRole: session?.user?.user_metadata?.role,
-        accessToken: session?.access_token ? 'present' : 'missing',
-        expiresAt: session?.expires_at
-      });
-      void handleSession(session);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session): void => {
+      setSession(session);
+      setUser(session?.user || null);
     });
 
+    // Cleanup on unmount
     return (): void => {
       logger.methodExit('AuthProvider.useEffect');
-      mountedRef.current = false;
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-      clearInterval(refreshInterval);
       subscription.unsubscribe();
     };
   }, []);
 
   const signIn = async (email: string, password: string): Promise<void> => {
-    logger.methodEntry('signIn', { email });
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        logger.error(error, 'signIn');
-        throw error;
-      }
-
-      await handleSession(data.session);
-      logger.methodExit('signIn', { success: true });
-    } catch (error) {
-      logger.error(error as Error, 'signIn');
-      throw error;
-    }
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) throw error;
   };
 
   const signUp = async (email: string, password: string, fullName: string): Promise<void> => {
-    logger.methodEntry('signUp', { email, fullName });
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-            display_name: fullName.split(' ')[0],
-            role: 'customer',
-          },
-          emailRedirectTo: `${window.location.origin}/auth/callback`
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+          display_name: fullName.split(' ')[0],
+          role: 'customer',
         },
-      });
-
-      if (error) {
-        logger.error(error, 'signUp');
-        throw error;
-      }
-
-      await handleSession(data.session);
-      logger.methodExit('signUp', { success: true });
-    } catch (error) {
-      logger.error(error as Error, 'signUp');
-      throw error;
-    }
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    if (error) throw error;
   };
 
   const signOut = async (): Promise<void> => {
-    logger.methodEntry('signOut');
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        logger.error(error, 'signOut');
-        throw error;
-      }
-
-      // Clear session and user immediately
-      setSession(null);
-      setUser(null);
-      
-      // Clear any local storage
-      window.localStorage.removeItem('supabase.auth.token');
-      
-      logger.methodExit('signOut', { success: true });
-    } catch (error) {
-      logger.error(error as Error, 'signOut');
-      throw error;
-    }
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    // Supabase automatically removes the session from local storage on sign out
   };
 
   const resetPassword = async (email: string): Promise<void> => {
-    logger.methodEntry('resetPassword', { email });
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
-      });
-      if (error) {
-        logger.error(error, 'resetPassword');
-        throw error;
-      }
-      logger.methodExit('resetPassword', { success: true });
-    } catch (error) {
-      logger.error(error as Error, 'resetPassword');
-      throw error;
-    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    });
+    if (error) throw error;
   };
 
   const value = {
@@ -227,12 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     resetPassword,
   };
 
-  const result = (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
-
+  const result = <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
   logger.methodExit('AuthProvider');
   return result;
 }
@@ -243,4 +102,4 @@ export function useAuth(): AuthContextType {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-} 
+}

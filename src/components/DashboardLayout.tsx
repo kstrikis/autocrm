@@ -1,21 +1,21 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/lib/logger';
 import SearchBar from './SearchBar';
 
-interface DashboardLayoutProps {
-  children: React.ReactNode;
-}
-
-export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+export const DashboardLayout: React.FC = () => {
   const location = useLocation();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   logger.methodEntry('DashboardLayout');
 
   const isActive = (path: string): boolean => {
     return location.pathname === path;
   };
+
+  const isServiceRep = user?.user_metadata?.role === 'service_rep';
+  const isAdmin = user?.user_metadata?.role === 'admin';
+  const isCustomer = !isServiceRep && !isAdmin;
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -50,22 +50,24 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                 <path d="M9 5C9 3.89543 9.89543 3 11 3H13C14.1046 3 15 3.89543 15 5C15 6.10457 14.1046 7 13 7H11C9.89543 7 9 6.10457 9 5Z" stroke="currentColor" strokeWidth="2"/>
               </svg>
             </span>
-            Tickets
+            {isCustomer ? 'My Tickets' : 'All Tickets'}
           </Link>
-          <Link
-            to="/customers"
-            className={`flex items-center px-4 py-2 ${
-              isActive('/customers') ? 'bg-blue-50 text-blue-600' : 'text-gray-600'
-            }`}
-          >
-            <span className="mr-3">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M17 21V19C17 16.7909 15.2091 15 13 15H5C2.79086 15 1 16.7909 1 19V21" stroke="currentColor" strokeWidth="2"/>
-                <path d="M9 11C11.2091 11 13 9.20914 13 7C13 4.79086 11.2091 3 9 3C6.79086 3 5 4.79086 5 7C5 9.20914 6.79086 11 9 11Z" stroke="currentColor" strokeWidth="2"/>
-              </svg>
-            </span>
-            Customers
-          </Link>
+          {(isServiceRep || isAdmin) && (
+            <Link
+              to="/users"
+              className={`flex items-center px-4 py-2 ${
+                isActive('/users') ? 'bg-blue-50 text-blue-600' : 'text-gray-600'
+              }`}
+            >
+              <span className="mr-3">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M17 21V19C17 16.7909 15.2091 15 13 15H5C2.79086 15 1 16.7909 1 19V21" stroke="currentColor" strokeWidth="2"/>
+                  <path d="M9 11C11.2091 11 13 9.20914 13 7C13 4.79086 11.2091 3 9 3C6.79086 3 5 4.79086 5 7C5 9.20914 6.79086 11 9 11Z" stroke="currentColor" strokeWidth="2"/>
+                </svg>
+              </span>
+              Users
+            </Link>
+          )}
           <Link
             to="/settings"
             className={`flex items-center px-4 py-2 ${
@@ -116,7 +118,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
         {/* Page Content */}
         <div className="flex-1 overflow-auto">
           <div className="p-8">
-            {children}
+            <Outlet />
           </div>
         </div>
       </div>

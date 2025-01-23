@@ -12,7 +12,7 @@ import { Toaster } from '@/components/ui/toaster'
 import { AuthProvider } from '@/contexts/AuthContext'
 import DashboardLayout from '@/components/DashboardLayout'
 import TicketsPage from '@/pages/TicketsPage'
-import CustomersPage from '@/pages/CustomersPage'
+import UsersPage from '@/pages/UsersPage'
 
 export function App(): React.ReactElement {
   logger.methodEntry('App')
@@ -29,23 +29,17 @@ export function App(): React.ReactElement {
 
             {/* Protected routes - all inside DashboardLayout */}
             <Route
+              path="/*"
               element={
                 <ProtectedRoute>
-                  <DashboardLayout>
-                    <Routes>
-                      <Route path="/dashboard" element={<DashboardPage />} />
-                      <Route path="/tickets" element={<TicketsPage />} />
-                      <Route path="/customers" element={<CustomersPage />} />
-                      <Route path="/settings" element={<SettingsPage />} />
-                    </Routes>
-                  </DashboardLayout>
+                  <DashboardLayout />
                 </ProtectedRoute>
               }
             >
-              <Route path="/dashboard" />
-              <Route path="/tickets" />
-              <Route path="/customers" />
-              <Route path="/settings" />
+              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="tickets" element={<TicketsPage />} />
+              <Route path="users" element={<UsersPage />} />
+              <Route path="settings" element={<SettingsPage />} />
             </Route>
           </Routes>
           <Toaster />

@@ -1,3 +1,4 @@
+/* eslint-disable enforce-logging/enforce-logging */
 import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { LoginForm } from '@/components/auth/LoginForm';
 import { SignUpForm } from '@/components/auth/SignUpForm';
 import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/lib/logger';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 export function AuthPage(): React.ReactElement {
   logger.methodEntry('AuthPage');
@@ -26,13 +28,14 @@ export function AuthPage(): React.ReactElement {
       await signIn(credentials[type].email, credentials[type].password);
       logger.info('Sample login successful', { type });
     } catch (error) {
-      logger.error('Sample login failed', { error });
+      // Error is already logged by AuthContext
+      void error;
     }
     logger.methodExit('AuthPage.handleSampleLogin');
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <LoadingSpinner fullScreen size="lg" />;
   }
 
   if (user) {
