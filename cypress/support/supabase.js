@@ -1,6 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { logger } from '../../src/lib/node-logger.ts';
 
 const supabaseUrl = Cypress.env('SUPABASE_URL');
 const supabaseKey = Cypress.env('SUPABASE_ANON_KEY');
@@ -40,4 +39,4 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       'X-Client-Info': 'autocrm-web-test-admin'
     }
   }
-}); 
+});

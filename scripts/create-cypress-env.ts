@@ -6,6 +6,12 @@ try {
   
   const { API_URL, ANON_KEY, SERVICE_ROLE_KEY } = process.env;
   
+  console.log('Environment variables found:', {
+    hasApiUrl: !!API_URL,
+    hasAnonKey: !!ANON_KEY,
+    hasServiceKey: !!SERVICE_ROLE_KEY
+  });
+  
   if (!API_URL || !ANON_KEY || !SERVICE_ROLE_KEY) {
     throw new Error('Missing required environment variables. Make sure to run supabase:env first.');
   }

@@ -659,6 +659,9 @@ All test implementations are complete but require fixes:
    - Added system dependencies for running Cypress in headless mode
    - Using xvfb for virtual display in CI environment
    - Added Kisak Mesa PPA for improved graphics driver support
+   - Fixed system dependency package names for Ubuntu 24.04
+   - Added extensive logging for environment variable debugging
+   - Using Vite testing mode with .env.testing file
 
 ### Technical Details
 - Using `supabase status -o env > .env` to generate environment variables
@@ -668,43 +671,15 @@ All test implementations are complete but require fixes:
 - Environment setup now happens before any tests or dev server starts
 - Installed graphics libraries and virtual framebuffer for headless testing
 - Using latest Mesa drivers from Kisak PPA to fix graphics compatibility issues
+- Updated to use libasound2t64 package instead of libasound2 for Ubuntu 24.04 compatibility
+- Added logging to track environment variable presence and file creation
+- Added file content verification in CI workflow
+- Creating .env.testing file with VITE_ prefixed variables for test mode
+- Using start-server-and-test to run Vite in testing mode during Cypress tests
 
 ### Dependencies
 - Added dotenv for environment variable management
 - Using @supabase/supabase-js with environment-based configuration
-- Added system dependencies: xvfb, libasound2, libgbm1, libgtk-3-0, libnss3, libxss1, libxtst6, libx11-xcb1
+- Added system dependencies: xvfb, libasound2t64, libgbm1, libgtk-3-0, libnss3, libxss1, libxtst6, libx11-xcb1
 - Added Kisak Mesa PPA for updated graphics drivers
-
-## 2025-01-24: CI/CD and Database Seeding Improvements
-
-### Changes Made
-1. **CI Database Seeding**
-   - Enhanced `seed-users-ci.ts` to use dotenv for Supabase credentials
-   - Improved error handling and logging in seed script
-   - Added fallback values for Supabase URL and service role key
-   - Updated CI workflow to use Supabase env scripts
-
-2. **CI Workflow Enhancements**
-   - Added `supabase:env` and `supabase:start` scripts to package.json
-   - Added `cypress:env` script to create cypress.env.json from environment variables
-   - Created `create-cypress-env.ts` script with proper logging
-   - Simplified CI workflow by using npm scripts instead of inline Node.js code
-   - Fixed environment setup order in CI workflow to ensure variables are available before tests run
-   - Added system dependencies for running Cypress in headless mode
-   - Using xvfb for virtual display in CI environment
-   - Added Kisak Mesa PPA for improved graphics driver support
-
-### Technical Details
-- Using `supabase status -o env > .env` to generate environment variables
-- Added proper error handling and fallback values for CI environment
-- Configured Cypress with necessary Supabase environment variables for E2E testing
-- Using TypeScript script with logging for cypress.env.json creation
-- Environment setup now happens before any tests or dev server starts
-- Installed graphics libraries and virtual framebuffer for headless testing
-- Using latest Mesa drivers from Kisak PPA to fix graphics compatibility issues
-
-### Dependencies
-- Added dotenv for environment variable management
-- Using @supabase/supabase-js with environment-based configuration
-- Added system dependencies: xvfb, libasound2, libgbm1, libgtk-3-0, libnss3, libxss1, libxtst6, libx11-xcb1
-- Added Kisak Mesa PPA for updated graphics drivers
+- Added start-server-and-test for running Vite in test mode

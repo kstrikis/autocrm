@@ -2,12 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [ '**' ]
+    branches: [ main ]
   pull_request:
-    branches: [ '**' ]
+    branches: [ main ]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
 
     steps:
@@ -16,9 +16,9 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '22'
+        node-version: '22.x'
         cache: 'npm'
-    
+
     - name: Install system dependencies
       run: |
         sudo add-apt-repository ppa:kisak/kisak-mesa -y
@@ -36,13 +36,32 @@ jobs:
 
     - name: Initialize Supabase
       run: |
+        echo "Starting Supabase initialization..."
         supabase init --force
+        
+        echo "Starting Supabase services..."
         npm run supabase:start
+        
+        echo "Generating .env file..."
         npm run supabase:env
+        echo "Contents of .env file:"
+        cat .env
+        
+        echo "Creating .env.testing file..."
+        cp .env .env.testing
+        echo "Contents of .env.testing file:"
+        cat .env.testing
+        
+        echo "Creating cypress.env.json..."
         npm run cypress:env
-        echo "Created cypress.env.json with credentials:"
+        echo "Contents of cypress.env.json:"
         cat cypress.env.json
-    
+        
+        echo "Verifying environment files exist:"
+        ls -la .env .env.testing cypress.env.json
+        
+        echo "Supabase initialization complete"
+
     - name: Run lint
       run: npm run lint
     
@@ -53,4 +72,4 @@ jobs:
       run: npm run seed-users:ci
 
     - name: Run tests
-      run: xvfb-run --auto-servernum npm run test:e2e
+      run: source .env.testing && xvfb-run --auto-servernum npm run test:e2e
