@@ -22,6 +22,45 @@ export default defineConfig({
     specPattern: 'cypress/e2e/**/*.cy.{js,jsx}',
     supportFile: 'cypress/support/e2e.js',
     setupNodeEvents(on, config) {
+      // Add task for logging
+      on('task', {
+        log(message) {
+          // Format the message nicely
+          const { message: msg, ...data } = message
+          
+          // Get timestamp
+          const timestamp = new Date().toISOString()
+          
+          // Add a newline and timestamp before each log
+          console.log('\n')
+          console.log(`[${timestamp}]`)
+          
+          // Print the message with emoji for better visibility
+          console.log(`🔍 ${msg}`)
+          
+          // If there's additional data, format it nicely
+          if (Object.keys(data).length > 0) {
+            Object.entries(data).forEach(([key, value]) => {
+              // Handle different types of values
+              if (value instanceof Error) {
+                console.log(`  ❌ ${key}:`)
+                console.log(`    ${value.message}`)
+                if (value.stack) {
+                  console.log(`    ${value.stack.split('\n').slice(1).join('\n    ')}`)
+                }
+              } else if (typeof value === 'object') {
+                console.log(`  📋 ${key}:`)
+                console.dir(value, { depth: null, colors: true, maxArrayLength: null })
+              } else {
+                console.log(`  ℹ️  ${key}: ${value}`)
+              }
+            })
+          }
+          
+          return null
+        }
+      })
+
       const options = {
         webpackOptions: {
           resolve: {

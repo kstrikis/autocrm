@@ -1,3 +1,4 @@
+import { createBrowserClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { logger } from '../../src/lib/node-logger.ts';
 
@@ -9,14 +10,19 @@ if (!supabaseUrl || !supabaseKey || !supabaseServiceKey) {
   throw new Error('Missing Supabase environment variables in cypress.env.json');
 }
 
-logger.info(`Initializing Supabase test clients for ${supabaseUrl}`);
-
 // Regular client for normal operations
-export const supabase = createClient(supabaseUrl, supabaseKey, {
+export const supabase = createBrowserClient(supabaseUrl, supabaseKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    storage: window.localStorage
+    detectSessionInUrl: true,
+    storage: window.localStorage,
+    flowType: 'pkce'
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'autocrm-web-test'
+    }
   }
 });
 
@@ -24,6 +30,14 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
 export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
-    persistSession: false
+    persistSession: false,
+    detectSessionInUrl: false,
+    flowType: 'none',
+    storage: null
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'autocrm-web-test-admin'
+    }
   }
 }); 

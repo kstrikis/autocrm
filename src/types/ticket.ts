@@ -18,4 +18,15 @@ export interface Ticket {
   closedAt?: string;
 }
 
-export interface TicketListItem extends Pick<Ticket, 'id' | 'title' | 'status' | 'priority' | 'createdAt' | 'customerId' | 'assignedTo'> {} 
+export interface TicketListItem extends Pick<Ticket, 'id' | 'title' | 'status' | 'priority' | 'createdAt' | 'customerId' | 'assignedTo'> {}
+
+export interface TicketInput {
+  title: string;
+  description: string;
+  priority: Exclude<TicketPriority, 'all'>;
+  status: Exclude<TicketStatus, 'all'>;
+  customerId?: string;
+  assignedTo?: string | null;
+  tags?: string[];
+  metadata?: Record<string, unknown>;
+} 

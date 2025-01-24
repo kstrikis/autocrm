@@ -41,7 +41,7 @@ function getLogLevel(): LogLevel {
   if (typeof window !== 'undefined' && (window as any).Cypress) {
     return 'info';
   }
-  return window.location.hostname === 'localhost' ? 'debug' : 'warn';
+  return window.location.hostname === 'localhost' ? 'info' : 'warn';
 }
 
 function formatTimestamp(): string {
