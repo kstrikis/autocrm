@@ -38,18 +38,7 @@ jobs:
         supabase init --force
         npm run supabase:start
         npm run supabase:env
-        # Create cypress.env.json from .env
-        node -e "
-          const fs = require('fs');
-          const dotenv = require('dotenv');
-          const env = dotenv.parse(fs.readFileSync('.env'));
-          const cypressEnv = {
-            SUPABASE_URL: env.API_URL,
-            SUPABASE_ANON_KEY: env.ANON_KEY,
-            SUPABASE_SERVICE_ROLE_KEY: env.SERVICE_ROLE_KEY
-          };
-          fs.writeFileSync('cypress.env.json', JSON.stringify(cypressEnv, null, 2));
-        "
+        npm run cypress:env
         echo "Created cypress.env.json with credentials:"
         cat cypress.env.json
     

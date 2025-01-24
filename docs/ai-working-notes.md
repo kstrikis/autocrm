@@ -652,15 +652,15 @@ All test implementations are complete but require fixes:
 
 2. **CI Workflow Enhancements**
    - Added `supabase:env` and `supabase:start` scripts to package.json
-   - Improved logging of Supabase initialization status
-   - Added automatic creation of `cypress.env.json` from .env file
-   - Configured environment variables using dotenv
+   - Added `cypress:env` script to create cypress.env.json from environment variables
+   - Created `create-cypress-env.ts` script with proper logging and error handling
+   - Simplified CI workflow by using npm scripts instead of inline Node.js code
 
 ### Technical Details
 - Using `supabase status -o env > .env` to generate environment variables
 - Added proper error handling and fallback values for CI environment
 - Configured Cypress with necessary Supabase environment variables for E2E testing
-- Using Node.js to transform .env variables into cypress.env.json format
+- Using TypeScript script with logging for cypress.env.json creation
 
 ### Dependencies
 - Added dotenv for environment variable management
@@ -677,15 +677,15 @@ All test implementations are complete but require fixes:
 
 2. **CI Workflow Enhancements**
    - Added `supabase:env` and `supabase:start` scripts to package.json
-   - Improved logging of Supabase initialization status
-   - Added automatic creation of `cypress.env.json` from .env file
-   - Configured environment variables using dotenv
+   - Added `cypress:env` script to create cypress.env.json from environment variables
+   - Created `create-cypress-env.ts` script with proper logging and error handling
+   - Simplified CI workflow by using npm scripts instead of inline Node.js code
 
 ### Technical Details
 - Using `supabase status -o env > .env` to generate environment variables
 - Added proper error handling and fallback values for CI environment
 - Configured Cypress with necessary Supabase environment variables for E2E testing
-- Using Node.js to transform .env variables into cypress.env.json format
+- Using TypeScript script with logging for cypress.env.json creation
 
 ### Dependencies
 - Added dotenv for environment variable management
