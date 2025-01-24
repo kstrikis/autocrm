@@ -1,9 +1,8 @@
 import { writeFileSync } from 'fs';
-import { logger } from '../src/lib/logger';
 import 'dotenv/config';
 
 try {
-  logger.methodEntry('create-cypress-env');
+  console.log('🔍 Creating cypress.env.json');
   
   const { API_URL, ANON_KEY, SERVICE_ROLE_KEY } = process.env;
   
@@ -17,12 +16,11 @@ try {
     SUPABASE_SERVICE_ROLE_KEY: SERVICE_ROLE_KEY
   };
   
-  logger.info('Creating cypress.env.json with Supabase credentials');
+  console.log('📝 Writing cypress.env.json with Supabase credentials');
   writeFileSync('cypress.env.json', JSON.stringify(cypressEnv, null, 2));
-  logger.info('Successfully created cypress.env.json');
+  console.log('✅ Successfully created cypress.env.json');
   
-  logger.methodExit('create-cypress-env');
 } catch (error) {
-  logger.error('Failed to create cypress.env.json:', error);
+  console.error('❌ Failed to create cypress.env.json:', error);
   process.exit(1);
 }
