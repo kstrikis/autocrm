@@ -109,13 +109,15 @@ export default function TicketDetailsPage(): React.ReactElement {
           table: 'tickets',
           filter: `id=eq.${ticketId}`,
         },
-        () => {
-          void fetchTicket();
+        (status): void => {
+          logger.info('TicketDetailsPage: Subscription status', { status });
         }
       )
-      .subscribe();
+      .subscribe((status): void => {
+        logger.info('TicketDetailsPage: Subscription status', { status });
+      });
 
-    return () => {
+    return (): void => {
       void channel.unsubscribe();
     };
   }, [ticketId]);
@@ -162,7 +164,7 @@ export default function TicketDetailsPage(): React.ReactElement {
     );
   }
 
-  return (
+  const result = (
     <div className="container mx-auto py-8">
       <div className="space-y-6">
         <div className="flex justify-between items-start">
@@ -240,4 +242,7 @@ export default function TicketDetailsPage(): React.ReactElement {
       </div>
     </div>
   );
+
+  logger.methodExit('TicketDetailsPage');
+  return result;
 } 

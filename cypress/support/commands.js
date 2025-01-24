@@ -174,11 +174,8 @@ Cypress.Commands.add('seedTestTickets', (tickets) => {
     // Add type checking with logging
     cy.task('log', { 
       message: '🔍 Validating ticket',
-      ticket: {
-        ...ticket,
-        customerIdType: typeof ticket.customerId,
-        customerIdValue: ticket.customerId
-      }
+      title: ticket.title,
+      customerId: ticket.customerId
     });
     
     if (typeof ticket.customerId !== 'string') {
@@ -214,7 +211,7 @@ Cypress.Commands.add('seedTestTickets', (tickets) => {
   tickets.forEach(validateTicket)
 
   // Log ticket data for debugging
-  cy.task('log', { message: '📝 Ticket data', tickets })
+  cy.task('log', { message: '📝 Ticket data', count: tickets.length, titles: tickets.map(t => t.title) });
 
   // Convert all tickets to database format
   const processedTickets = tickets.map(ticket => ({
@@ -231,9 +228,7 @@ Cypress.Commands.add('seedTestTickets', (tickets) => {
   }))
 
   // Log processed tickets
-  processedTickets.forEach(ticket => {
-    cy.task('log', { message: '📝 Prepared ticket for database', ticket })
-  })
+  cy.task('log', { message: '📝 Prepared tickets for database', count: processedTickets.length });
 
   // Verify all customers exist
   const customerIds = processedTickets.map(t => t.customer_id)

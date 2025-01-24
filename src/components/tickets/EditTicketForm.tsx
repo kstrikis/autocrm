@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
-import { TicketStatus, TicketPriority, Ticket } from '@/types/ticket';
+import { Ticket } from '@/types/ticket';
 import { supabase } from '@/lib/supabase';
 
 const ticketFormSchema = z.object({

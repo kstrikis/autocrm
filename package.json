@@ -13,7 +13,7 @@
     "cypress:run": "ELECTRON_ENABLE_LOGGING=1 start-server-and-test dev http://localhost:5173 'cypress run'",
     "cypress:component": "ELECTRON_ENABLE_LOGGING=1 cypress run --component",
     "cypress:e2e": "ELECTRON_ENABLE_LOGGING=1 start-server-and-test dev http://localhost:5173 'cypress run --e2e'",
-    "test:e2e": "ELECTRON_ENABLE_LOGGING=1 start-server-and-test dev http://localhost:5173 'cypress run'",
+    "test:e2e": "start-server-and-test dev http://localhost:5173 'cypress run'",
     "test:component": "ELECTRON_ENABLE_LOGGING=1 cypress run --component",
     "test:service-rep": "ELECTRON_ENABLE_LOGGING=1 cypress run --spec 'cypress/e2e/service-rep-access.cy.js'",
     "test:service-rep:open": "ELECTRON_ENABLE_LOGGING=1 cypress open --e2e --browser chrome --spec 'cypress/e2e/service-rep-access.cy.js'",
