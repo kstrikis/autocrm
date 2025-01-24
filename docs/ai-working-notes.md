@@ -645,17 +645,48 @@ All test implementations are complete but require fixes:
 
 ### Changes Made
 1. **CI Database Seeding**
-   - Enhanced `seed-users-ci.ts` to reliably get Supabase credentials using grep/awk
+   - Enhanced `seed-users-ci.ts` to use dotenv for Supabase credentials
    - Improved error handling and logging in seed script
    - Added fallback values for Supabase URL and service role key
-   - Updated CI workflow to extract Supabase credentials from CLI output
+   - Updated CI workflow to use Supabase env scripts
 
 2. **CI Workflow Enhancements**
-   - Added environment variable export for Supabase credentials
+   - Added `supabase:env` and `supabase:start` scripts to package.json
    - Improved logging of Supabase initialization status
-   - Made credential extraction more robust using grep and awk
+   - Added automatic creation of `cypress.env.json` from .env file
+   - Configured environment variables using dotenv
 
 ### Technical Details
-- Using `supabase status | grep 'API URL' | awk '{print $3}'` for reliable URL extraction
-- Using `supabase status | grep 'service_role key' | awk '{print $3}'` for service role key
+- Using `supabase status -o env > .env` to generate environment variables
 - Added proper error handling and fallback values for CI environment
+- Configured Cypress with necessary Supabase environment variables for E2E testing
+- Using Node.js to transform .env variables into cypress.env.json format
+
+### Dependencies
+- Added dotenv for environment variable management
+- Using @supabase/supabase-js with environment-based configuration
+
+## 2025-01-24: CI/CD and Database Seeding Improvements
+
+### Changes Made
+1. **CI Database Seeding**
+   - Enhanced `seed-users-ci.ts` to use dotenv for Supabase credentials
+   - Improved error handling and logging in seed script
+   - Added fallback values for Supabase URL and service role key
+   - Updated CI workflow to use Supabase env scripts
+
+2. **CI Workflow Enhancements**
+   - Added `supabase:env` and `supabase:start` scripts to package.json
+   - Improved logging of Supabase initialization status
+   - Added automatic creation of `cypress.env.json` from .env file
+   - Configured environment variables using dotenv
+
+### Technical Details
+- Using `supabase status -o env > .env` to generate environment variables
+- Added proper error handling and fallback values for CI environment
+- Configured Cypress with necessary Supabase environment variables for E2E testing
+- Using Node.js to transform .env variables into cypress.env.json format
+
+### Dependencies
+- Added dotenv for environment variable management
+- Using @supabase/supabase-js with environment-based configuration

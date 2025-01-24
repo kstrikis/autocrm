@@ -36,43 +36,21 @@ jobs:
     - name: Initialize Supabase
       run: |
         supabase init --force
-        supabase db start
-        supabase db reset
-        
-        echo "Debug: Supabase Status Output"
-        supabase status
-        echo "--------------------"
-        
-        # Get Supabase credentials with debug output
-        echo "Extracting API URL..."
-        supabase status | grep 'API URL'
-        API_URL=$(supabase status | grep 'API URL' | cut -d':' -f2- | xargs)
-        echo "API_URL=$API_URL"
-        
-        echo "Extracting service role key..."
-        supabase status | grep 'service_role key'
-        SERVICE_ROLE_KEY=$(supabase status | grep 'service_role key' | cut -d':' -f2- | xargs)
-        echo "SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
-        
-        echo "Extracting anon key..."
-        supabase status | grep 'anon key'
-        ANON_KEY=$(supabase status | grep 'anon key' | cut -d':' -f2- | xargs)
-        echo "ANON_KEY=$ANON_KEY"
-        
-        # Export for other steps
-        echo "SUPABASE_URL=$API_URL" >> $GITHUB_ENV
-        echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> $GITHUB_ENV
-        echo "SUPABASE_ANON_KEY=$ANON_KEY" >> $GITHUB_ENV
-        
-        # Create cypress.env.json
-        echo "{
-          \"SUPABASE_URL\": \"$API_URL\",
-          \"SUPABASE_ANON_KEY\": \"$ANON_KEY\",
-          \"SUPABASE_SERVICE_ROLE_KEY\": \"$SERVICE_ROLE_KEY\"
-        }" > cypress.env.json
-        
-        echo "Supabase initialized with URL: $API_URL"
-        echo "Created cypress.env.json with credentials"
+        npm run supabase:start
+        npm run supabase:env
+        # Create cypress.env.json from .env
+        node -e "
+          const fs = require('fs');
+          const dotenv = require('dotenv');
+          const env = dotenv.parse(fs.readFileSync('.env'));
+          const cypressEnv = {
+            SUPABASE_URL: env.API_URL,
+            SUPABASE_ANON_KEY: env.ANON_KEY,
+            SUPABASE_SERVICE_ROLE_KEY: env.SERVICE_ROLE_KEY
+          };
+          fs.writeFileSync('cypress.env.json', JSON.stringify(cypressEnv, null, 2));
+        "
+        echo "Created cypress.env.json with credentials:"
         cat cypress.env.json
     
     - name: Seed Database
