@@ -248,13 +248,13 @@ export function UserList(): React.ReactElement {
             <TableRow key={user.id} data-testid="user-item">
               <TableCell>{user.fullName}</TableCell>
               <TableCell>
-                <Badge variant={
-                  user.role === 'admin' ? 'destructive' :
-                  user.role === 'service_rep' ? 'secondary' :
-                  'default'
-                }>
-                  {user.role}
-                </Badge>
+                {user.role === 'admin' ? (
+                  <Badge variant="destructive">{user.role}</Badge>
+                ) : user.role === 'service_rep' ? (
+                  <Badge style={{ backgroundColor: '#3b82f6', color: 'white' }}>{user.role}</Badge>
+                ) : (
+                  <Badge variant="default">{user.role}</Badge>
+                )}
               </TableCell>
               <TableCell>
                 {user.openTickets > 0 ? (

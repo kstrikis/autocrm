@@ -1,0 +1,4 @@
+{
+  "adapter": "pg",
+  "projectDescription": "This project is about building a messaging and collaboration platform where users can join workspaces, create channels, send messages, react to messages, and share attachments within the platform. It also involves managing user accounts, workspace memberships, and migrations for the platform."
+}

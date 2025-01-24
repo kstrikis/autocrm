@@ -1,5 +1,24 @@
 # AI Working Notes
 
+## Latest Changes (2024-01-24)
+
+### User Interface and TypeScript Improvements
+- Updated user role badges in UserList component:
+  - Added distinct blue styling for service rep role
+  - Fixed casing to use camelCase (serviceRep) consistently
+  - Improved visual distinction between different roles
+
+### TypeScript and Data Handling
+- Fixed TypeScript issues in TicketQueue component:
+  - Properly handled customer and assigned properties for array types
+  - Removed unused SupabaseResponse interface
+  - Enhanced logging with full ticket data
+
+### CI/CD Improvements
+- Added new seed file optimized for GitHub CI environment:
+  - Created scripts/seed-users-ci.ts for test data
+  - Ensures consistent test environment in CI pipeline
+
 ## Latest Changes (2024-01-23)
 
 ### Authentication and Loading State Improvements
@@ -509,7 +528,6 @@ All test implementations are complete but require fixes:
 - Added proper loading state handling with new `LoadingSpinner` component
 - Simplified `AuthContext` implementation by removing unnecessary complexity
 - Fixed TypeScript return types and logging in `AuthContext`
-- Improved test coverage for authentication flows
 
 ## Code Organization
 
