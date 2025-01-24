@@ -35,7 +35,7 @@ jobs:
 
     - name: Initialize Supabase
       run: |
-        supabase init
+        supabase init --force
         supabase db start
         supabase db reset --db-url postgresql://postgres:postgres@localhost:54322/postgres
 
