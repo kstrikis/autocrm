@@ -19,6 +19,13 @@ jobs:
         node-version: '22'
         cache: 'npm'
     
+    - name: Install system dependencies
+      run: |
+        sudo add-apt-repository ppa:kisak/kisak-mesa -y
+        sudo apt-get update
+        sudo apt-get upgrade -y
+        sudo apt-get install -y xvfb libasound2 libgbm1 libgtk-3-0 libnss3 libxss1 libxtst6 libx11-xcb1
+
     - name: Install dependencies
       run: npm ci
     
@@ -46,4 +53,4 @@ jobs:
       run: npm run seed-users:ci
 
     - name: Run tests
-      run: npm run test:e2e
+      run: xvfb-run --auto-servernum npm run test:e2e

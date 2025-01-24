@@ -656,7 +656,9 @@ All test implementations are complete but require fixes:
    - Created `create-cypress-env.ts` script with proper logging
    - Simplified CI workflow by using npm scripts instead of inline Node.js code
    - Fixed environment setup order in CI workflow to ensure variables are available before tests run
-   - Removed Cypress GitHub action in favor of direct npm script execution
+   - Added system dependencies for running Cypress in headless mode
+   - Using xvfb for virtual display in CI environment
+   - Added Kisak Mesa PPA for improved graphics driver support
 
 ### Technical Details
 - Using `supabase status -o env > .env` to generate environment variables
@@ -664,10 +666,14 @@ All test implementations are complete but require fixes:
 - Configured Cypress with necessary Supabase environment variables for E2E testing
 - Using TypeScript script with logging for cypress.env.json creation
 - Environment setup now happens before any tests or dev server starts
+- Installed graphics libraries and virtual framebuffer for headless testing
+- Using latest Mesa drivers from Kisak PPA to fix graphics compatibility issues
 
 ### Dependencies
 - Added dotenv for environment variable management
 - Using @supabase/supabase-js with environment-based configuration
+- Added system dependencies: xvfb, libasound2, libgbm1, libgtk-3-0, libnss3, libxss1, libxtst6, libx11-xcb1
+- Added Kisak Mesa PPA for updated graphics drivers
 
 ## 2025-01-24: CI/CD and Database Seeding Improvements
 
@@ -684,7 +690,9 @@ All test implementations are complete but require fixes:
    - Created `create-cypress-env.ts` script with proper logging
    - Simplified CI workflow by using npm scripts instead of inline Node.js code
    - Fixed environment setup order in CI workflow to ensure variables are available before tests run
-   - Removed Cypress GitHub action in favor of direct npm script execution
+   - Added system dependencies for running Cypress in headless mode
+   - Using xvfb for virtual display in CI environment
+   - Added Kisak Mesa PPA for improved graphics driver support
 
 ### Technical Details
 - Using `supabase status -o env > .env` to generate environment variables
@@ -692,7 +700,11 @@ All test implementations are complete but require fixes:
 - Configured Cypress with necessary Supabase environment variables for E2E testing
 - Using TypeScript script with logging for cypress.env.json creation
 - Environment setup now happens before any tests or dev server starts
+- Installed graphics libraries and virtual framebuffer for headless testing
+- Using latest Mesa drivers from Kisak PPA to fix graphics compatibility issues
 
 ### Dependencies
 - Added dotenv for environment variable management
 - Using @supabase/supabase-js with environment-based configuration
+- Added system dependencies: xvfb, libasound2, libgbm1, libgtk-3-0, libnss3, libxss1, libxtst6, libx11-xcb1
+- Added Kisak Mesa PPA for updated graphics drivers
