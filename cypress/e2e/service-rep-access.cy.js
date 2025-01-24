@@ -1,15 +1,43 @@
 describe('Service Rep Access', () => {
   beforeEach(() => {
     // Start with a clean slate
+    cy.cleanupTestTickets();
+    cy.seedTestTickets([
+      {
+        title: 'Test Ticket 1',
+        description: 'Description for ticket 1',
+        priority: 'low',
+        status: 'open',
+        created_by: 'customer1@example.com'
+      },
+      {
+        title: 'Test Ticket 2',
+        description: 'Description for ticket 2',
+        priority: 'medium',
+        status: 'in_progress',
+        created_by: 'customer1@example.com'
+      },
+      {
+        title: 'Test Ticket 3',
+        description: 'Description for ticket 3',
+        priority: 'high',
+        status: 'closed',
+        created_by: 'customer2@example.com'
+      }
+    ]);
     cy.visit('/');
     cy.clearLocalStorage();
     cy.log('Cleared local storage and visited root URL');
   });
 
+  afterEach(() => {
+    cy.cleanupTestTickets();
+  });
+
   it('service rep should see all tickets and users', () => {
     // Log initial state
     cy.log('Starting service rep access test');
-    console.log('Starting service rep access test'); // Add console.log for terminal output
+    console.log('Starting service rep access test');
 
     // Click the service rep demo login button
     cy.contains('button', 'Demo Service Rep')
@@ -28,14 +56,14 @@ describe('Service Rep Access', () => {
       });
 
     // Go to tickets tab and count tickets
-    cy.contains('a', 'Tickets').click();
+    cy.contains('a', 'All Tickets').click();
     cy.url().should('include', '/tickets');
-    cy.contains('h1', 'Support Tickets').should('be.visible');
+    cy.contains('Test Ticket 1').should('be.visible');
     cy.get('table tbody tr').then($rows => {
       const ticketCount = $rows.length;
       cy.log(`Found ${ticketCount} tickets`);
       console.log(`Found ${ticketCount} tickets`);
-      // We expect to see all tickets (3 from seed data)
+      // We expect to see exactly 3 seeded tickets
       expect(ticketCount).to.equal(3);
     });
 

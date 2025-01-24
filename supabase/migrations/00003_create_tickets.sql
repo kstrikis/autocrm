@@ -8,6 +8,12 @@ create type public.ticket_status as enum (
   'closed'
 );
 
+-- Add GraphQL aliases for ticket_status enum values
+comment on type public.ticket_status is E'@graphql({"name": "TicketStatus", "values": {
+  "pending_customer": "pendingCustomer",
+  "pending_internal": "pendingInternal"
+}})';
+
 -- Create enum for ticket priority
 create type public.ticket_priority as enum (
   'low',
@@ -15,6 +21,9 @@ create type public.ticket_priority as enum (
   'high',
   'urgent'
 );
+
+-- Add GraphQL alias for ticket_priority enum
+comment on type public.ticket_priority is E'@graphql({"name": "TicketPriority"})';
 
 -- Create tickets table
 create table if not exists public.tickets (
@@ -33,7 +42,8 @@ create table if not exists public.tickets (
   closed_at timestamptz
 );
 
--- Add GraphQL field name aliases
+-- Add GraphQL field name aliases for ALL fields
+comment on table public.tickets is E'@graphql({"name": "Ticket"})';
 comment on column public.tickets.customer_id is E'@graphql({"name": "customerId"})';
 comment on column public.tickets.assigned_to is E'@graphql({"name": "assignedTo"})';
 comment on column public.tickets.created_at is E'@graphql({"name": "createdAt"})';
@@ -84,4 +94,7 @@ create trigger set_tickets_updated_at
 grant usage on schema public to authenticated;
 grant select, insert, update on public.tickets to authenticated;
 grant usage on type public.ticket_status to authenticated;
-grant usage on type public.ticket_priority to authenticated; 
+grant usage on type public.ticket_priority to authenticated;
+
+-- Enable realtime for tickets table
+alter publication supabase_realtime add table tickets; 

@@ -73,24 +73,42 @@ const demoUsers = [
   }
 ];
 
-const demoTickets = [
+// Type for our frontend/test ticket format
+type TicketInput = {
+  title: string;
+  description: string;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  status: 'new' | 'open' | 'pendingCustomer' | 'pendingInternal' | 'resolved' | 'closed';
+  customerId?: string;
+  assignedTo?: string | null;
+  tags?: string[];
+  metadata?: Record<string, unknown>;
+};
+
+const demoTickets: TicketInput[] = [
   {
     title: 'Cannot access my account',
     description: 'I keep getting an error when trying to log in',
     priority: 'high',
-    status: 'new'
+    status: 'new',
+    tags: ['login', 'error'],
+    metadata: { browser: 'Chrome', os: 'Windows' }
   },
   {
     title: 'Feature request: Dark mode',
     description: 'Would love to have a dark mode option',
     priority: 'low',
-    status: 'open'
+    status: 'open',
+    tags: ['feature-request', 'ui'],
+    metadata: { importance: 'enhancement' }
   },
   {
     title: 'App crashes on startup',
     description: 'After the latest update, the app crashes immediately',
     priority: 'urgent',
-    status: 'pending_internal'
+    status: 'pendingInternal',
+    tags: ['crash', 'critical'],
+    metadata: { version: '1.2.0', platform: 'iOS' }
   }
 ];
 
@@ -137,21 +155,57 @@ async function seedUsers() {
 
     if (customers && customers.length > 0 && serviceReps && serviceReps.length > 0) {
       for (const ticket of demoTickets) {
-        const customerId = customers[Math.floor(Math.random() * customers.length)].id;
-        const assignedTo = Math.random() > 0.5 ? serviceReps[Math.floor(Math.random() * serviceReps.length)].id : null;
+        // Prepare ticket data in frontend format
+        const ticketData: TicketInput = {
+          ...ticket,
+          customerId: customers[Math.floor(Math.random() * customers.length)].id,
+          assignedTo: Math.random() > 0.5 ? serviceReps[Math.floor(Math.random() * serviceReps.length)].id : null
+        };
+
+        // Validate ticket data
+        const requiredFields = ['title', 'description', 'customerId', 'status', 'priority'];
+        const missingFields = requiredFields.filter(field => !ticketData[field as keyof TicketInput]);
+        if (missingFields.length) {
+          logger.error(`Missing required fields for ticket ${ticketData.title}:`, { fields: missingFields });
+          continue;
+        }
+
+        // Validate status
+        const validStatuses = ['new', 'open', 'pendingCustomer', 'pendingInternal', 'resolved', 'closed'];
+        if (!validStatuses.includes(ticketData.status)) {
+          logger.error(`Invalid status for ticket ${ticketData.title}:`, { status: ticketData.status });
+          continue;
+        }
+
+        // Validate priority
+        const validPriorities = ['low', 'medium', 'high', 'urgent'];
+        if (!validPriorities.includes(ticketData.priority)) {
+          logger.error(`Invalid priority for ticket ${ticketData.title}:`, { priority: ticketData.priority });
+          continue;
+        }
+
+        // Convert to database format for insertion
+        const dbTicket = {
+          title: ticketData.title,
+          description: ticketData.description,
+          status: ticketData.status.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`),
+          priority: ticketData.priority,
+          customer_id: ticketData.customerId,
+          assigned_to: ticketData.assignedTo,
+          tags: ticketData.tags || [],
+          metadata: ticketData.metadata || {},
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
 
         const { error } = await supabase
           .from('tickets')
-          .insert({
-            ...ticket,
-            customer_id: customerId,
-            assigned_to: assignedTo
-          });
+          .insert(dbTicket);
 
         if (error) {
-          logger.error(`Failed to create ticket ${ticket.title}:`, error.message);
+          logger.error(`Failed to create ticket ${ticketData.title}:`, { error: error.message });
         } else {
-          logger.info(`Created ticket: ${ticket.title}`);
+          logger.info(`Created ticket: ${ticketData.title}`);
         }
       }
     }

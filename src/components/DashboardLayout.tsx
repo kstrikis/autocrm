@@ -3,6 +3,7 @@ import { Link, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/lib/logger';
 import SearchBar from './SearchBar';
+import { CreateTicketForm } from './tickets/CreateTicketForm';
 
 export const DashboardLayout: React.FC = () => {
   const location = useLocation();
@@ -105,12 +106,15 @@ export const DashboardLayout: React.FC = () => {
           <div className="px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
             <SearchBar />
             <div className="flex items-center">
-              <button
-                type="button"
-                className="ml-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                New Ticket
-              </button>
+              <CreateTicketForm>
+                <button
+                  data-test="new-ticket-button"
+                  type="button"
+                  className="ml-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  New Ticket
+                </button>
+              </CreateTicketForm>
             </div>
           </div>
         </div>
