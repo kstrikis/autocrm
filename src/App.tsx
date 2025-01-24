@@ -12,6 +12,7 @@ import { Toaster } from '@/components/ui/toaster'
 import { AuthProvider } from '@/contexts/AuthContext'
 import DashboardLayout from '@/components/DashboardLayout'
 import TicketsPage from '@/pages/TicketsPage'
+import TicketDetailsPage from '@/pages/TicketDetailsPage'
 import UsersPage from '@/pages/UsersPage'
 
 export function App(): React.ReactElement {
@@ -38,6 +39,7 @@ export function App(): React.ReactElement {
             >
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="tickets" element={<TicketsPage />} />
+              <Route path="tickets/:ticketId" element={<TicketDetailsPage />} />
               <Route path="users" element={<UsersPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>

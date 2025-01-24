@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Table,
   TableBody,
@@ -19,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { TicketListItem, TicketPriority, TicketStatus } from '@/types/ticket';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase';
+import { EditTicketForm } from './EditTicketForm';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -41,6 +43,9 @@ const statusColors = {
 interface TicketWithNames extends Omit<TicketListItem, 'customerId' | 'assignedTo'> {
   customerName: string;
   assignedToName: string | null;
+  description: string;
+  customerId: string;
+  assignedTo: string | null;
 }
 
 // type SortField = 'name' | 'openTickets' | 'totalTickets' | 'lastTicket' | 'joined';
@@ -49,6 +54,7 @@ interface TicketWithNames extends Omit<TicketListItem, 'customerId' | 'assignedT
 interface SupabaseTicket {
   id: string;
   title: string;
+  description: string;
   status: TicketStatus;
   priority: TicketPriority;
   created_at: string;
@@ -64,6 +70,7 @@ export function TicketQueue(): React.ReactElement {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [tickets, setTickets] = useState<TicketWithNames[]>([]);
+  const navigate = useNavigate();
 //   const [sortField, setSortField] = useState<SortField>('lastTicket');
 //   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 //   const [hasOpenTicketsFilter, setHasOpenTicketsFilter] = useState<'all' | 'yes' | 'no'>('all');
@@ -96,6 +103,7 @@ export function TicketQueue(): React.ReactElement {
         .select(`
           id,
           title,
+          description,
           status,
           priority,
           created_at,
@@ -164,11 +172,14 @@ export function TicketQueue(): React.ReactElement {
       const transformedTickets = (data as unknown as SupabaseTicket[]).map(ticket => ({
         id: ticket.id,
         title: ticket.title,
+        description: ticket.description,
         status: ticket.status as Exclude<TicketStatus, 'all'>,
         priority: ticket.priority as Exclude<TicketPriority, 'all'>,
         createdAt: ticket.created_at,
         customerName: ticket.customer?.full_name || 'Unknown',
-        assignedToName: ticket.assigned?.full_name || null
+        customerId: ticket.customer?.id || '',
+        assignedToName: ticket.assigned?.full_name || null,
+        assignedTo: ticket.assigned?.id || null
       }));
 
       setTickets(transformedTickets);
@@ -259,6 +270,11 @@ export function TicketQueue(): React.ReactElement {
     };
   }, [page, statusFilter, priorityFilter]);
 
+  const handleTicketClick = (ticketId: string): void => {
+    logger.info('TicketQueue: Navigating to ticket details', { ticketId });
+    navigate(`/tickets/${ticketId}`);
+  };
+
   const result = (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -317,11 +333,17 @@ export function TicketQueue(): React.ReactElement {
               <TableHead>Priority</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead>Assigned To</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {tickets?.map((ticket) => (
-              <TableRow key={ticket.id} data-testid="ticket-item">
+              <TableRow 
+                key={ticket.id} 
+                data-testid="ticket-item"
+                onClick={() => handleTicketClick(ticket.id)}
+                className="cursor-pointer hover:bg-gray-50"
+              >
                 <TableCell>{new Date(ticket.createdAt).toLocaleDateString()}</TableCell>
                 <TableCell>{ticket.title}</TableCell>
                 <TableCell>
@@ -336,6 +358,24 @@ export function TicketQueue(): React.ReactElement {
                 </TableCell>
                 <TableCell>{ticket.customerName}</TableCell>
                 <TableCell>{ticket.assignedToName || 'Unassigned'}</TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <EditTicketForm
+                    ticket={{
+                      id: ticket.id,
+                      title: ticket.title,
+                      description: ticket.description,
+                      status: ticket.status,
+                      priority: ticket.priority,
+                      customerId: ticket.customerId,
+                      assignedTo: ticket.assignedTo,
+                      createdAt: ticket.createdAt,
+                      updatedAt: ticket.createdAt,
+                      tags: [],
+                      metadata: {}
+                    }}
+                    onUpdate={fetchTickets}
+                  />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -347,7 +387,6 @@ export function TicketQueue(): React.ReactElement {
           variant="outline"
           onClick={() => setPage((p) => Math.max(1, p - 1))}
           disabled={page === 1}
-          className="text-gray-900"
         >
           Previous
         </Button>
@@ -356,7 +395,6 @@ export function TicketQueue(): React.ReactElement {
           variant="outline"
           onClick={() => setPage((p) => p + 1)}
           disabled={!tickets || tickets.length < ITEMS_PER_PAGE}
-          className="text-gray-900"
         >
           Next
         </Button>

@@ -82,4 +82,28 @@ describe('Ticket Creation', () => {
     // Verify validation messages
     cy.contains('Title is required').should('be.visible');
   });
+
+  it('should edit a ticket successfully', () => {
+    // Find and click edit button on first ticket
+    cy.get('[data-test="edit-ticket-button"]').first().click();
+
+    // Update form fields
+    cy.get('input[name="title"]').clear().type('Updated Test Ticket');
+    cy.get('textarea[name="description"]').clear().type('Updated test description');
+    cy.get('[data-test="priority-select"]').click();
+    cy.get('[role="option"]').contains('High').click();
+    cy.get('[data-test="status-select"]').click();
+    cy.get('[role="option"]').contains('Open').click();
+
+    // Submit
+    cy.get('button').contains('Update Ticket').click();
+    
+    // Force reload in headless mode since subscriptions can be unreliable
+    cy.reload();
+    
+    // Wait for tickets to load after reload
+    cy.get('table').within(() => {
+      cy.contains('Updated Test Ticket', { timeout: 10000 }).should('be.visible');
+    });
+  });
 }); 

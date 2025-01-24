@@ -70,7 +70,7 @@ export function AuthPage(): React.ReactElement {
           <div className="flex flex-wrap gap-2 w-full">
             <Button
               variant="outline"
-              className="flex-1 text-gray-900"
+              className="flex-1"
               onClick={() => handleSampleLogin('customer')}
               data-testid="demo-customer-button"
             >
@@ -78,7 +78,7 @@ export function AuthPage(): React.ReactElement {
             </Button>
             <Button
               variant="outline"
-              className="flex-1 text-gray-900"
+              className="flex-1"
               onClick={() => handleSampleLogin('service_rep')}
               data-testid="demo-service-rep-button"
             >
@@ -86,7 +86,7 @@ export function AuthPage(): React.ReactElement {
             </Button>
             <Button
               variant="outline"
-              className="flex-1 text-gray-900"
+              className="flex-1"
               onClick={() => handleSampleLogin('admin')}
               data-testid="demo-admin-button"
             >
