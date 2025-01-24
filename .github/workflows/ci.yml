@@ -24,7 +24,7 @@ jobs:
         sudo add-apt-repository ppa:kisak/kisak-mesa -y
         sudo apt-get update
         sudo apt-get upgrade -y
-        sudo apt-get install -y xvfb libasound2 libgbm1 libgtk-3-0 libnss3 libxss1 libxtst6 libx11-xcb1
+        sudo apt-get install -y xvfb libasound2t64 libgbm1 libgtk-3-0 libnss3 libxss1 libxtst6 libx11-xcb1
 
     - name: Install dependencies
       run: npm ci
