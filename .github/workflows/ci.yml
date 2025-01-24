@@ -27,6 +27,20 @@ jobs:
     
     - name: Run build
       run: npm run build
+
+    - name: Setup Supabase CLI
+      uses: supabase/setup-cli@v1
+      with:
+        version: latest
+
+    - name: Initialize Supabase
+      run: |
+        supabase init
+        supabase db start
+        supabase db reset --db-url postgresql://postgres:postgres@localhost:54322/postgres
+
+    - name: Seed Database
+      run: npm run seed:users
     
     - name: Run E2E tests
       uses: cypress-io/github-action@v6
