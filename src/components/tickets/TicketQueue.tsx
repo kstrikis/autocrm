@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Table,
   TableBody,
@@ -19,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { TicketListItem, TicketPriority, TicketStatus } from '@/types/ticket';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase';
+import { EditTicketForm } from './EditTicketForm';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -41,6 +43,9 @@ const statusColors = {
 interface TicketWithNames extends Omit<TicketListItem, 'customerId' | 'assignedTo'> {
   customerName: string;
   assignedToName: string | null;
+  description: string;
+  customerId: string;
+  assignedTo: string | null;
 }
 
 // type SortField = 'name' | 'openTickets' | 'totalTickets' | 'lastTicket' | 'joined';
@@ -49,11 +54,25 @@ interface TicketWithNames extends Omit<TicketListItem, 'customerId' | 'assignedT
 interface SupabaseTicket {
   id: string;
   title: string;
+  description: string;
   status: TicketStatus;
   priority: TicketPriority;
   created_at: string;
   customer: { id: string; full_name: string } | null;
   assigned: { id: string; full_name: string } | null;
+  customer_id: string;
+}
+
+interface SupabaseResponse {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  priority: string;
+  created_at: string;
+  customer_id: string;
+  customer: { id: string; full_name: string }[];
+  assigned: { id: string; full_name: string }[];
 }
 
 export function TicketQueue(): React.ReactElement {
@@ -64,150 +83,90 @@ export function TicketQueue(): React.ReactElement {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [tickets, setTickets] = useState<TicketWithNames[]>([]);
+  const navigate = useNavigate();
 //   const [sortField, setSortField] = useState<SortField>('lastTicket');
 //   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 //   const [hasOpenTicketsFilter, setHasOpenTicketsFilter] = useState<'all' | 'yes' | 'no'>('all');
 
-  // Function to fetch tickets that we can reuse
-  const fetchTickets = async (): Promise<void> => {
-    try {
-      setLoading(true);
-      logger.info('TicketQueue: Loading tickets...');
-      
-      // Log the current auth state
-      const { data: { session }, error: authError } = await supabase.auth.getSession();
-      logger.info('TicketQueue: Auth state', { 
-        hasSession: !!session,
-        userId: session?.user?.id,
-        userMetadata: session?.user?.user_metadata,
-        appMetadata: session?.user?.app_metadata,
-        role: session?.user?.role
-      });
+  // Function to transform a Supabase ticket to our interface
+  const transformTicket = (ticket: SupabaseTicket): TicketWithNames => ({
+    id: ticket.id,
+    title: ticket.title,
+    description: ticket.description,
+    status: ticket.status as Exclude<TicketStatus, 'all'>,
+    priority: ticket.priority as Exclude<TicketPriority, 'all'>,
+    createdAt: ticket.created_at,
+    customerName: ticket.customer?.full_name || 'Unknown',
+    customerId: ticket.customer_id,
+    assignedToName: ticket.assigned?.full_name || null,
+    assignedTo: ticket.assigned?.id || null
+  });
 
-      if (authError) {
-        logger.error('TicketQueue: Auth error', { error: authError });
-        throw authError;
-      }
-
-      logger.info('TicketQueue: Fetching tickets', { page, statusFilter, priorityFilter });
-
-      let query = supabase
-        .from('tickets')
-        .select(`
-          id,
-          title,
-          status,
-          priority,
-          created_at,
-          customer:user_profiles!customer_id(id, full_name),
-          assigned:user_profiles!assigned_to(id, full_name)
-        `)
-        .order('created_at', { ascending: false })
-        .range((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE - 1);
-
-      // Log the query parameters instead of SQL
-      logger.debug('TicketQueue: Base query params', { 
-        page,
-        offset: (page - 1) * ITEMS_PER_PAGE,
-        limit: ITEMS_PER_PAGE
-      });
-
-      if (statusFilter.length > 0 && statusFilter[0] !== 'all') {
-        query = query.in('status', statusFilter);
-        logger.debug('TicketQueue: Added status filter', { statusFilter });
-      }
-
-      if (priorityFilter.length > 0 && priorityFilter[0] !== 'all') {
-        query = query.in('priority', priorityFilter);
-        logger.debug('TicketQueue: Added priority filter', { priorityFilter });
-      }
-
-      // Filter by customer ID if in customer mode
-      if (session?.user?.user_metadata?.role === 'customer') {
-        query = query.eq('customer_id', session.user.id);
-        logger.debug('TicketQueue: Added customer filter', { customerId: session.user.id });
-      }
-
-      // Log the final query parameters
-      logger.debug('TicketQueue: Final query params', {
-        page,
-        offset: (page - 1) * ITEMS_PER_PAGE,
-        limit: ITEMS_PER_PAGE,
-        statusFilter,
-        priorityFilter
-      });
-
-      const { data, error: supabaseError } = await query;
-
-      if (supabaseError) {
-        logger.error('TicketQueue: Supabase error', { 
-          error: supabaseError,
-          errorMessage: supabaseError.message,
-          errorDetails: supabaseError.details,
-          errorHint: supabaseError.hint,
-          queryParams: {
-            page,
-            offset: (page - 1) * ITEMS_PER_PAGE,
-            limit: ITEMS_PER_PAGE,
-            statusFilter,
-            priorityFilter,
-            filters: {
-              status: statusFilter.length > 0 ? statusFilter : 'all',
-              priority: priorityFilter.length > 0 ? priorityFilter : 'all'
-            }
-          }
-        });
-        throw supabaseError;
-      }
-
-      // Transform the data to match our interface
-      const transformedTickets = (data as unknown as SupabaseTicket[]).map(ticket => ({
-        id: ticket.id,
-        title: ticket.title,
-        status: ticket.status as Exclude<TicketStatus, 'all'>,
-        priority: ticket.priority as Exclude<TicketPriority, 'all'>,
-        createdAt: ticket.created_at,
-        customerName: ticket.customer?.full_name || 'Unknown',
-        assignedToName: ticket.assigned?.full_name || null
-      }));
-
-      setTickets(transformedTickets);
-      logger.info('TicketQueue: Tickets fetched successfully', { 
-        count: transformedTickets.length,
-        tickets: transformedTickets.map(t => ({
-          id: t.id,
-          title: t.title,
-          status: t.status,
-          customerName: t.customerName
-        }))
-      });
-    } catch (err) {
-      logger.error('TicketQueue: Error fetching tickets', { 
-        error: err,
-        errorStack: (err as Error).stack,
-        context: {
-          page,
-          statusFilter,
-          priorityFilter
-        }
-      });
-      setError(err as Error);
-    } finally {
-      // Add a small delay before removing loading state to ensure it's visible
-      setTimeout(() => {
-        setLoading(false);
-      }, 200);
-    }
-  };
-
-  // Initial fetch and subscription setup
+  // Initial subscription setup
   useEffect(() => {
-    void fetchTickets();
+    logger.info('TicketQueue: Setting up subscription');
+    setLoading(true);
+
+    // Initial query to get tickets
+    const getInitialTickets = async (): Promise<void> => {
+      try {
+        const { data: { session }, error: authError } = await supabase.auth.getSession();
+        if (authError) {
+          logger.error('TicketQueue: Auth error', { error: authError });
+          throw authError;
+        }
+
+        let query = supabase
+          .from('tickets')
+          .select(`
+            id,
+            title,
+            description,
+            status,
+            priority,
+            created_at,
+            customer_id,
+            customer:user_profiles!customer_id(id, full_name),
+            assigned:user_profiles!assigned_to(id, full_name)
+          `)
+          .order('created_at', { ascending: false })
+          .range((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE - 1);
+
+        if (statusFilter.length > 0 && statusFilter[0] !== 'all') {
+          query = query.in('status', statusFilter);
+        }
+
+        if (priorityFilter.length > 0 && priorityFilter[0] !== 'all') {
+          query = query.in('priority', priorityFilter);
+        }
+
+        if (session?.user?.user_metadata?.role === 'customer') {
+          query = query.eq('customer_id', session.user.id);
+        }
+
+        const { data, error: supabaseError } = await query;
+
+        if (supabaseError) throw supabaseError;
+
+        const transformedTickets = ((data || []) as SupabaseResponse[]).map(d => ({
+          ...d,
+          customer: d.customer?.[0] || null,
+          assigned: d.assigned?.[0] || null
+        } as SupabaseTicket)).map(transformTicket);
+        setTickets(transformedTickets);
+        logger.info('TicketQueue: Initial tickets loaded', { count: transformedTickets.length });
+      } catch (err) {
+        logger.error('TicketQueue: Error loading initial tickets', { error: err });
+        setError(err as Error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void getInitialTickets();
 
     // Set up real-time subscription
-    const channel = supabase.channel('tickets-changes');
-    
-    channel
+    const channel = supabase.channel('tickets-changes')
       .on(
         'postgres_changes',
         {
@@ -215,21 +174,21 @@ export function TicketQueue(): React.ReactElement {
           schema: 'public',
           table: 'tickets'
         },
-        async (payload) => {
+        async (payload: { eventType: string; new?: Record<string, unknown>; old?: Record<string, unknown> }): Promise<void> => {
           logger.info('TicketQueue: Received real-time update', { 
             eventType: payload.eventType,
-            payload 
+            ticketId: payload.new?.id
           });
 
           // For INSERT and UPDATE events, check if the ticket belongs to the current user
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const { data: { session }, error: authError } = await supabase.auth.getSession();
             if (authError) {
-              logger.error('TicketQueue: Auth error', { error: authError });
+              logger.error('TicketQueue: Auth error during real-time update', { error: authError });
               return;
             }
 
-            // If in customer mode, only refetch if the ticket belongs to the current user
+            // If in customer mode, only update if the ticket belongs to the current user
             if (session?.user?.user_metadata?.role === 'customer') {
               const newTicket = payload.new as { customer_id: string };
               if (newTicket.customer_id !== session.user.id) {
@@ -240,24 +199,72 @@ export function TicketQueue(): React.ReactElement {
                 return;
               }
             }
-          }
 
-          // Refetch tickets for all event types
-          await fetchTickets();
+            // Get the full ticket data with customer and assigned user info
+            const { data: ticketData, error: ticketError } = await supabase
+              .from('tickets')
+              .select(`
+                id,
+                title,
+                description,
+                status,
+                priority,
+                created_at,
+                customer_id,
+                customer:user_profiles!customer_id(id, full_name),
+                assigned:user_profiles!assigned_to(id, full_name)
+              `)
+              .eq('id', payload.new?.id || '')
+              .single();
+
+            if (ticketError) {
+              logger.error('TicketQueue: Error fetching updated ticket data', { error: ticketError });
+              return;
+            }
+
+            if (ticketData) {
+              const transformedData = {
+                ...ticketData,
+                customer: ticketData.customer?.[0] || null,
+                assigned: ticketData.assigned?.[0] || null
+              } as SupabaseTicket;
+              
+              setTickets(prevTickets => {
+                const updatedTickets = [...prevTickets];
+                const index = updatedTickets.findIndex(t => t.id === transformedData.id);
+                
+                if (index !== -1) {
+                  // Update existing ticket
+                  updatedTickets[index] = transformTicket(transformedData);
+                } else if (updatedTickets.length < ITEMS_PER_PAGE) {
+                  // Add new ticket if we have space
+                  updatedTickets.unshift(transformTicket(transformedData));
+                }
+                
+                return updatedTickets;
+              });
+            }
+          } else if (payload.eventType === 'DELETE') {
+            setTickets(prevTickets => 
+              prevTickets.filter(t => t.id !== payload.old?.id)
+            );
+          }
         }
       )
-      .subscribe((status) => {
+      .subscribe((status: string): void => {
         logger.info('TicketQueue: Subscription status', { status });
       });
 
-    // Cleanup subscription
     return (): void => {
       logger.info('TicketQueue: Cleaning up subscription');
-      void channel.unsubscribe().then((status) => {
-        logger.info('TicketQueue: Subscription status after cleanup', { status });
-      });
+      void channel.unsubscribe();
     };
   }, [page, statusFilter, priorityFilter]);
+
+  const handleTicketClick = (ticketId: string): void => {
+    logger.info('TicketQueue: Navigating to ticket details', { ticketId });
+    void navigate(`/tickets/${ticketId}`);
+  };
 
   const result = (
     <div className="space-y-4">
@@ -317,11 +324,17 @@ export function TicketQueue(): React.ReactElement {
               <TableHead>Priority</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead>Assigned To</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {tickets?.map((ticket) => (
-              <TableRow key={ticket.id} data-testid="ticket-item">
+              <TableRow 
+                key={ticket.id} 
+                data-testid="ticket-item"
+                onClick={(): void => handleTicketClick(ticket.id)}
+                className="cursor-pointer hover:bg-gray-50"
+              >
                 <TableCell>{new Date(ticket.createdAt).toLocaleDateString()}</TableCell>
                 <TableCell>{ticket.title}</TableCell>
                 <TableCell>
@@ -336,6 +349,24 @@ export function TicketQueue(): React.ReactElement {
                 </TableCell>
                 <TableCell>{ticket.customerName}</TableCell>
                 <TableCell>{ticket.assignedToName || 'Unassigned'}</TableCell>
+                <TableCell onClick={(e): void => e.stopPropagation()}>
+                  <EditTicketForm
+                    ticket={{
+                      id: ticket.id,
+                      title: ticket.title,
+                      description: ticket.description,
+                      status: ticket.status,
+                      priority: ticket.priority,
+                      customerId: ticket.customerId,
+                      assignedTo: ticket.assignedTo || undefined,
+                      createdAt: ticket.createdAt,
+                      updatedAt: ticket.createdAt,
+                      tags: [],
+                      metadata: {}
+                    }}
+                    onUpdate={(): void => {}} // No need to refetch as we have realtime updates
+                  />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -345,18 +376,16 @@ export function TicketQueue(): React.ReactElement {
       <div className="flex justify-between items-center">
         <Button
           variant="outline"
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          onClick={(): void => setPage((p) => Math.max(1, p - 1))}
           disabled={page === 1}
-          className="text-gray-900"
         >
           Previous
         </Button>
         <span>Page {page}</span>
         <Button
           variant="outline"
-          onClick={() => setPage((p) => p + 1)}
+          onClick={(): void => setPage((p) => p + 1)}
           disabled={!tickets || tickets.length < ITEMS_PER_PAGE}
-          className="text-gray-900"
         >
           Next
         </Button>

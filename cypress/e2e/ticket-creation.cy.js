@@ -24,7 +24,7 @@ describe('Ticket Creation', () => {
           customerId
         }
       ];
-      cy.task('log', { message: '📝 Ticket data', tickets });
+      cy.task('log', { message: '📝 Ticket data', count: tickets.length, titles: tickets.map(t => t.title) });
       cy.seedTestTickets(tickets);
     });
     
@@ -81,5 +81,41 @@ describe('Ticket Creation', () => {
 
     // Verify validation messages
     cy.contains('Title is required').should('be.visible');
+  });
+
+  it('should edit a ticket successfully', () => {
+    // Click the first ticket row to navigate to details page
+    cy.get('[data-testid="ticket-item"]').first().click();
+
+    // Verify we're on the details page by checking for the ticket title
+    cy.contains('Existing Ticket 1').should('be.visible');
+
+    // Click edit button
+    cy.contains('button', 'Edit Ticket').click();
+
+    // Update form fields
+    cy.get('input[name="title"]').clear().type('Updated Test Ticket');
+    cy.get('textarea[name="description"]').clear().type('Updated test description');
+    cy.get('[data-test="priority-select"]').click();
+    cy.get('[role="option"]').contains('High').click();
+    cy.get('[data-test="status-select"]').click();
+    cy.get('[role="option"]').contains('Open').click();
+
+    // Submit
+    cy.get('button').contains('Update Ticket').click();
+    
+    // Force reload in headless mode since subscriptions can be unreliable
+    cy.reload();
+    
+    // Verify the updated title is visible on the details page
+    cy.contains('Updated Test Ticket', { timeout: 10000 }).should('be.visible');
+
+    // Navigate back to tickets list
+    cy.contains('Back to Tickets').click();
+
+    // Verify the update is reflected in the tickets list
+    cy.get('table').within(() => {
+      cy.contains('Updated Test Ticket').should('be.visible');
+    });
   });
 }); 

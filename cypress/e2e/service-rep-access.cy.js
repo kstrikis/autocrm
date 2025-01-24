@@ -19,19 +19,15 @@ describe('Service Rep Access', () => {
     
     // Seed tickets after both users are created
     cy.then(function() {
-      cy.task('log', { 
-        message: '🎫 Seeding test tickets',
-        customer1: this.customer1,
-        customer2: this.customer2,
-        type1: typeof this.customer1,
-        type2: typeof this.customer2
-      });
-      
       // Convert IDs to strings explicitly
       const customer1Id = String(this.customer1.data.user.id);
       const customer2Id = String(this.customer2.data.user.id);
-      cy.task('log', { message: '**************Customer 1 created', customer1Id });
-      cy.task('log', { message: '**************Customer 2 created', customer2Id });
+      
+      cy.task('log', { 
+        message: '🎫 Seeding test tickets',
+        customer1Id,
+        customer2Id
+      });
 
       cy.seedTestTickets([
         {

@@ -31,12 +31,8 @@ export default defineConfig({
           // Get timestamp
           const timestamp = new Date().toISOString()
           
-          // Add a newline and timestamp before each log
-          console.log('\n')
-          console.log(`[${timestamp}]`)
-          
           // Print the message with emoji for better visibility
-          console.log(`🔍 ${msg}`)
+          console.log(`[${timestamp}] 🔍 ${msg}`)
           
           // If there's additional data, format it nicely
           if (Object.keys(data).length > 0) {

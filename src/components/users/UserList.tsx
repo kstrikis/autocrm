@@ -281,7 +281,6 @@ export function UserList(): React.ReactElement {
           variant="outline"
           onClick={() => setPage((p) => Math.max(1, p - 1))}
           disabled={page === 1}
-          className="text-gray-900"
         >
           Previous
         </Button>
@@ -290,7 +289,6 @@ export function UserList(): React.ReactElement {
           variant="outline"
           onClick={() => setPage((p) => p + 1)}
           disabled={users.length < ITEMS_PER_PAGE}
-          className="text-gray-900"
         >
           Next
         </Button>

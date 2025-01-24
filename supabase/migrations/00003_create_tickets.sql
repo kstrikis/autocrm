@@ -78,10 +78,13 @@ create policy "Customers can create their own tickets"
     assigned_to is null
   );
 
-create policy "Service reps and admins can update tickets"
+create policy "Users can update tickets"
   on public.tickets
   for update using (
     ((auth.jwt() -> 'user_metadata' ->> 'role')::user_role in ('service_rep', 'admin'))
+    or (
+      auth.uid() = customer_id -- Customer can update their own tickets
+    )
   );
 
 -- Create trigger for updated_at
