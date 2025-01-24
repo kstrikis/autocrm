@@ -663,6 +663,7 @@ All test implementations are complete but require fixes:
    - Added extensive logging for environment variable debugging
    - Using Vite testing mode with .env.testing file
    - Fixed environment variable prefixing to match Vite's VITE_ requirements
+   - Added act configuration to use Ubuntu 24.04 container
 
 ### Technical Details
 - Using `supabase status -o env > .env` to generate environment variables
@@ -679,6 +680,7 @@ All test implementations are complete but require fixes:
 - Using start-server-and-test to run Vite in testing mode during Cypress tests
 - Added VITE_ prefix to all environment variables to match Vite's requirements
 - Updated create-cypress-env.ts to use VITE_ prefixed variables
+- Configured act to use catthehacker/ubuntu:act-24.04 image for local CI testing
 
 ### Dependencies
 - Added dotenv for environment variable management
