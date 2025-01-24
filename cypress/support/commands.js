@@ -10,7 +10,10 @@ const supabaseAdmin = createClient(
   {
     auth: {
       autoRefreshToken: false,
-      persistSession: false
+      persistSession: false,
+      detectSessionInUrl: false,
+      flowType: 'none',
+      storage: null
     }
   }
 )
@@ -49,27 +52,52 @@ Cypress.Commands.add('cleanupTestUser', (email) => {
 
 // Command to create a test user
 Cypress.Commands.add('createTestUser', (email, password, metadata = {}) => {
-  cy.task('log', { message: '👤 Creating test user', email, metadata })
-  cy.wrap(
-    supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: {
-        ...metadata,
-        full_name: metadata.full_name || 'Test User',
-        display_name: metadata.display_name || 'Test',
-        role: metadata.role || 'customer'
+  cy.task('log', { message: '👤 Creating test user', email, metadata });
+
+  // First check for existing user
+  cy.wrap(supabaseAdmin.auth.admin.listUsers())
+    .then(({ data: { users }, error: listError }) => {
+      if (listError) {
+        cy.task('log', { message: '❌ Error listing users', error: listError });
+        throw listError;
+      }
+
+      const existingUser = users.find(u => u.email === email);
+      if (existingUser) {
+        cy.task('log', { message: '💡 Found existing user, deleting first', userId: existingUser.id });
+        return supabaseAdmin.auth.admin.deleteUser(existingUser.id)
+          .then(() => {
+            cy.task('log', { message: '✅ Successfully deleted existing user', email });
+          });
       }
     })
-  ).then((response) => {
-    if (response.error) {
-      cy.task('log', { message: '❌ Error creating test user', error: response.error })
-      throw response.error
-    }
-    cy.task('log', { message: '✅ Test user created successfully', userId: response.data?.user?.id })
-  })
-})
+    .then(() => {
+      return supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          ...metadata,
+          full_name: metadata.full_name || 'Test User',
+          display_name: metadata.display_name || 'Test',
+          role: metadata.role || 'customer'
+        }
+      });
+    })
+    .then((response) => {
+      if (response.error) {
+        cy.task('log', { message: '❌ Error creating test user', error: response.error });
+        throw response.error;
+      }
+      const userId = response.data?.user?.id;
+      cy.task('log', { message: '✅ Test user created successfully', userId });
+      return userId;
+    })
+    .then(userId => {
+      cy.task('log', { message: '🆔 Returning user ID', userId, type: typeof userId });
+      return userId;
+    });
+});
 
 // Command to sign in via Supabase
 Cypress.Commands.add('supabaseSignIn', (email, password) => {
@@ -117,24 +145,23 @@ Cypress.Commands.add('cleanupTestTickets', () => {
 
     if (!response.data?.length) {
       cy.task('log', { message: '💡 No tickets to clean up' })
-      return
+    } else {
+      const ticketIds = response.data.map(t => t.id)
+      cy.task('log', { message: '🎫 Found tickets to clean up', count: ticketIds.length })
+
+      cy.wrap(
+        supabaseAdmin
+          .from('tickets')
+          .delete()
+          .in('id', ticketIds)
+      ).then((deleteResponse) => {
+        if (deleteResponse.error) {
+          cy.task('log', { message: '❌ Error deleting tickets', error: deleteResponse.error })
+          throw deleteResponse.error
+        }
+        cy.task('log', { message: '✅ Successfully cleaned up tickets', count: deleteResponse.data?.length || 0 })
+      })
     }
-
-    const ticketIds = response.data.map(t => t.id)
-    cy.task('log', { message: '🎫 Found tickets to clean up', count: ticketIds.length })
-
-    cy.wrap(
-      supabaseAdmin
-        .from('tickets')
-        .delete()
-        .in('id', ticketIds)
-    ).then((deleteResponse) => {
-      if (deleteResponse.error) {
-        cy.task('log', { message: '❌ Error deleting tickets', error: deleteResponse.error })
-        throw deleteResponse.error
-      }
-      cy.task('log', { message: '✅ Successfully cleaned up tickets', count: deleteResponse.data?.length || 0 })
-    })
   })
 })
 
@@ -144,6 +171,22 @@ Cypress.Commands.add('seedTestTickets', (tickets) => {
   
   // Validate ticket data
   const validateTicket = (ticket) => {
+    // Add type checking with logging
+    cy.task('log', { 
+      message: '🔍 Validating ticket',
+      ticket: {
+        ...ticket,
+        customerIdType: typeof ticket.customerId,
+        customerIdValue: ticket.customerId
+      }
+    });
+    
+    if (typeof ticket.customerId !== 'string') {
+      const error = `Invalid customerId type: ${typeof ticket.customerId} (${ticket.customerId})`;
+      cy.task('log', { message: '❌ Validation Error', error });
+      throw new Error(error);
+    }
+
     const requiredFields = ['title', 'description', 'customerId', 'status', 'priority']
     const missingFields = requiredFields.filter(field => !ticket[field])
     if (missingFields.length) {
@@ -169,6 +212,9 @@ Cypress.Commands.add('seedTestTickets', (tickets) => {
 
   // Validate all tickets first
   tickets.forEach(validateTicket)
+
+  // Log ticket data for debugging
+  cy.task('log', { message: '📝 Ticket data', tickets })
 
   // Convert all tickets to database format
   const processedTickets = tickets.map(ticket => ({
@@ -227,6 +273,48 @@ Cypress.Commands.add('seedTestTickets', (tickets) => {
       }
       cy.task('log', { message: '✅ Successfully created tickets', count: data.length })
     })
+  })
+})
+
+// Command to clean up multiple test users
+Cypress.Commands.add('cleanupTestUsers', () => {
+  cy.task('log', { message: '🧹 Starting cleanup of test users' })
+  cy.wrap(
+    supabaseAdmin.auth.admin.listUsers()
+  ).then(({ data: { users }, error }) => {
+    if (error) {
+      cy.task('log', { message: '❌ Error listing users', error })
+      throw error
+    }
+
+    // Filter test users but exclude demo users
+    const demoEmails = [
+      'customer1@example.com',
+      'service1@example.com',
+      'admin@example.com'
+    ]
+
+    const testUsers = users.filter(user => 
+      (user.email?.includes('@example.com') || user.user_metadata?.role === 'test') &&
+      !demoEmails.includes(user.email)
+    )
+
+    if (!testUsers.length) {
+      cy.task('log', { message: '💡 No test users to clean up' })
+    } else {
+      cy.task('log', { message: '👥 Found test users to clean up', count: testUsers.length })
+
+      // Delete each test user
+      const deletePromises = testUsers.map(user => 
+        supabaseAdmin.auth.admin.deleteUser(user.id)
+      )
+
+      cy.wrap(
+        Promise.all(deletePromises)
+      ).then(() => {
+        cy.task('log', { message: '✅ Successfully cleaned up test users', count: testUsers.length })
+      })
+    }
   })
 })
 

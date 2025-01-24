@@ -52,8 +52,8 @@ export function AuthPage(): React.ReactElement {
         <CardContent>
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'login' | 'signup')}>
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              <TabsTrigger value="login" data-testid="login-tab">Login</TabsTrigger>
+              <TabsTrigger value="signup" data-testid="signup-tab">Sign Up</TabsTrigger>
             </TabsList>
             <TabsContent value="login">
               <LoginForm />
@@ -72,6 +72,7 @@ export function AuthPage(): React.ReactElement {
               variant="outline"
               className="flex-1 text-gray-900"
               onClick={() => handleSampleLogin('customer')}
+              data-testid="demo-customer-button"
             >
               Demo Customer
             </Button>
@@ -79,6 +80,7 @@ export function AuthPage(): React.ReactElement {
               variant="outline"
               className="flex-1 text-gray-900"
               onClick={() => handleSampleLogin('service_rep')}
+              data-testid="demo-service-rep-button"
             >
               Demo Service Rep
             </Button>
@@ -86,6 +88,7 @@ export function AuthPage(): React.ReactElement {
               variant="outline"
               className="flex-1 text-gray-900"
               onClick={() => handleSampleLogin('admin')}
+              data-testid="demo-admin-button"
             >
               Demo Admin
             </Button>

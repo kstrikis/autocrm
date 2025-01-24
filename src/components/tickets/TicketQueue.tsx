@@ -137,7 +137,7 @@ export function TicketQueue(): React.ReactElement {
         priorityFilter
       });
 
-      const { data, error: supabaseError, count } = await query;
+      const { data, error: supabaseError } = await query;
 
       if (supabaseError) {
         logger.error('TicketQueue: Supabase error', { 
@@ -308,7 +308,7 @@ export function TicketQueue(): React.ReactElement {
       ) : tickets.length === 0 ? (
         <div className="text-gray-500">No tickets found</div>
       ) : (
-        <Table>
+        <Table data-testid="ticket-list">
           <TableHeader>
             <TableRow>
               <TableHead>Created</TableHead>
@@ -321,7 +321,7 @@ export function TicketQueue(): React.ReactElement {
           </TableHeader>
           <TableBody>
             {tickets?.map((ticket) => (
-              <TableRow key={ticket.id}>
+              <TableRow key={ticket.id} data-testid="ticket-item">
                 <TableCell>{new Date(ticket.createdAt).toLocaleDateString()}</TableCell>
                 <TableCell>{ticket.title}</TableCell>
                 <TableCell>

@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -30,7 +29,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
-import { TicketPriority, TicketStatus } from '@/types/ticket';
+import { TicketStatus } from '@/types/ticket';
 import { supabase } from '@/lib/supabase';
 
 const ticketFormSchema = z.object({

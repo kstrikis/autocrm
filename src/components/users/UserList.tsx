@@ -202,7 +202,7 @@ export function UserList(): React.ReactElement {
         </Select>
       </div>
 
-      <Table>
+      <Table data-testid="user-list">
         <TableHeader>
           <TableRow>
             <TableHead 
@@ -245,7 +245,7 @@ export function UserList(): React.ReactElement {
         </TableHeader>
         <TableBody>
           {users.map((user) => (
-            <TableRow key={user.id}>
+            <TableRow key={user.id} data-testid="user-item">
               <TableCell>{user.fullName}</TableCell>
               <TableCell>
                 <Badge variant={
