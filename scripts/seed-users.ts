@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import { logger } from '../src/lib/node-logger';
+import { TicketInput } from '../src/types/ticket';
 
 dotenv.config();
 
@@ -72,18 +73,6 @@ const demoUsers = [
     }
   }
 ];
-
-// Type for our frontend/test ticket format
-type TicketInput = {
-  title: string;
-  description: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  status: 'new' | 'open' | 'pendingCustomer' | 'pendingInternal' | 'resolved' | 'closed';
-  customerId?: string;
-  assignedTo?: string | null;
-  tags?: string[];
-  metadata?: Record<string, unknown>;
-};
 
 const demoTickets: TicketInput[] = [
   {

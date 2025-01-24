@@ -251,7 +251,7 @@ export function TicketQueue(): React.ReactElement {
       });
 
     // Cleanup subscription
-    return () => {
+    return (): void => {
       logger.info('TicketQueue: Cleaning up subscription');
       void channel.unsubscribe().then((status) => {
         logger.info('TicketQueue: Subscription status after cleanup', { status });

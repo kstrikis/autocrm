@@ -233,6 +233,18 @@ export default [
   },
   {
     files: ['**/*.{spec,test}.{ts,tsx}', '**/test-*.ts', '**/scripts/**/*.ts'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      parser: (await import('@typescript-eslint/parser')).default,
+      parserOptions: {
+        project: ['./tsconfig.scripts.json'],
+        ecmaFeatures: { jsx: true }
+      }
+    },
+    plugins: {
+      '@typescript-eslint': (await import('@typescript-eslint/eslint-plugin')).default
+    },
     rules: {
       'enforce-logging/enforce-logging': 'off',
       'no-console': 'off',
