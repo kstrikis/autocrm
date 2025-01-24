@@ -38,7 +38,7 @@ jobs:
         supabase init --force
         supabase db start
         supabase db reset
-
+    
     - name: Seed Database
       run: npm run seed-users:ci
     

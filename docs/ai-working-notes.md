@@ -640,3 +640,22 @@ All test implementations are complete but require fixes:
   - Added proper cleanup of Supabase subscriptions
   - Improved subscription status logging
   - Added real-time updates for ticket modifications 
+
+## 2025-01-24: CI/CD and Database Seeding Improvements
+
+### Changes Made
+1. **CI Database Seeding**
+   - Enhanced `seed-users-ci.ts` to reliably get Supabase credentials using grep/awk
+   - Improved error handling and logging in seed script
+   - Added fallback values for Supabase URL and service role key
+   - Updated CI workflow to extract Supabase credentials from CLI output
+
+2. **CI Workflow Enhancements**
+   - Added environment variable export for Supabase credentials
+   - Improved logging of Supabase initialization status
+   - Made credential extraction more robust using grep and awk
+
+### Technical Details
+- Using `supabase status | grep 'API URL' | awk '{print $3}'` for reliable URL extraction
+- Using `supabase status | grep 'service_role key' | awk '{print $3}'` for service role key
+- Added proper error handling and fallback values for CI environment

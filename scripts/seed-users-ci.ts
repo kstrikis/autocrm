@@ -8,24 +8,26 @@ dotenv.config();
 
 async function getSupabaseCredentials() {
   try {
-    // Get Supabase status which works both locally and in CI
-    const supabaseStatus = execSync('npx supabase status', { encoding: 'utf8' });
+    // In CI environment, get the service role key from Supabase CLI
+    let supabaseUrl;
+    let serviceRoleKey;
     
-    // Extract API URL and service role key from status output
-    const apiUrlMatch = supabaseStatus.match(/API URL: (.*)/);
-    const serviceRoleMatch = supabaseStatus.match(/service_role key: (.*)/);
-    
-    const supabaseUrl = apiUrlMatch ? apiUrlMatch[1].trim() : null;
-    const serviceRoleKey = serviceRoleMatch ? serviceRoleMatch[1].trim() : null;
-
-    if (!serviceRoleKey || !supabaseUrl) {
-      throw new Error('Could not get Supabase credentials from status');
+    try {
+      supabaseUrl = execSync("supabase status | grep 'API URL' | awk '{print $3}'", { encoding: 'utf8' }).trim();
+      serviceRoleKey = execSync("supabase status | grep 'service_role key' | awk '{print $3}'", { encoding: 'utf8' }).trim();
+      
+      if (!supabaseUrl || !serviceRoleKey) {
+        throw new Error('Could not find API URL or service role key in Supabase status');
+      }
+      
+      logger.info('Got Supabase credentials from CLI:', { url: supabaseUrl });
+    } catch (error) {
+      logger.error('Error getting credentials from Supabase CLI:', error);
     }
 
-    logger.info('Got Supabase credentials:', { url: supabaseUrl });
     return { supabaseUrl, serviceRoleKey };
   } catch (error) {
-    logger.error('Error getting Supabase credentials:', error);
+    logger.error('Error in getSupabaseCredentials:', error);
     throw error;
   }
 }
@@ -109,7 +111,7 @@ async function seedUsers() {
   logger.methodEntry('seedUsers');
   
   try {
-    // Get Supabase credentials from CLI
+    // Get Supabase credentials
     const { supabaseUrl, serviceRoleKey } = await getSupabaseCredentials();
 
     const supabase = createClient(supabaseUrl, serviceRoleKey, {
