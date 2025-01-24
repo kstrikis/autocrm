@@ -2,6 +2,17 @@
 
 ## Latest Changes (2024-01-24)
 
+### Seed Script and Form Improvements
+- Fixed seed script environment variable issues:
+  - Added `source .env` to load environment variables before curl command
+  - Updated curl command syntax for better compatibility
+  - Fixed variable expansion using `${VAR}` syntax
+- Added proper autocomplete attributes to form inputs:
+  - `autoComplete="username"` for email inputs
+  - `autoComplete="name"` for full name input
+  - `autoComplete="new-password"` for password/confirm password inputs
+  - `autoComplete="off"` for search bar to prevent unwanted suggestions
+
 ### User Interface and TypeScript Improvements
 - Updated user role badges in UserList component:
   - Added distinct blue styling for service rep role

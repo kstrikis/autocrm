@@ -82,6 +82,7 @@ export function SignUpForm(): React.ReactElement {
         <Input
           type="text"
           placeholder="Full Name"
+          autoComplete="name"
           {...register('fullName')}
           className="w-full"
         />
@@ -95,6 +96,7 @@ export function SignUpForm(): React.ReactElement {
         <Input
           type="email"
           placeholder="Email"
+          autoComplete="username"
           {...register('email')}
           className="w-full"
         />
@@ -108,6 +110,7 @@ export function SignUpForm(): React.ReactElement {
         <Input
           type="password"
           placeholder="Password"
+          autoComplete="new-password"
           {...register('password')}
           className="w-full"
         />
@@ -132,6 +135,7 @@ export function SignUpForm(): React.ReactElement {
         <Input
           type="password"
           placeholder="Confirm Password"
+          autoComplete="new-password"
           {...register('confirmPassword')}
           className="w-full"
         />

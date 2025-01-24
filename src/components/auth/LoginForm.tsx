@@ -60,6 +60,7 @@ export function LoginForm(): React.ReactElement {
           id="email"
           type="email"
           placeholder="Enter your email"
+          autoComplete="username"
           {...register('email')}
         />
         {errors.email && (
