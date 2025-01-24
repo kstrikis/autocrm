@@ -662,6 +662,7 @@ All test implementations are complete but require fixes:
    - Fixed system dependency package names for Ubuntu 24.04
    - Added extensive logging for environment variable debugging
    - Using Vite testing mode with .env.testing file
+   - Fixed environment variable prefixing to match Vite's VITE_ requirements
 
 ### Technical Details
 - Using `supabase status -o env > .env` to generate environment variables
@@ -676,6 +677,8 @@ All test implementations are complete but require fixes:
 - Added file content verification in CI workflow
 - Creating .env.testing file with VITE_ prefixed variables for test mode
 - Using start-server-and-test to run Vite in testing mode during Cypress tests
+- Added VITE_ prefix to all environment variables to match Vite's requirements
+- Updated create-cypress-env.ts to use VITE_ prefixed variables
 
 ### Dependencies
 - Added dotenv for environment variable management

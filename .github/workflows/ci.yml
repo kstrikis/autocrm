@@ -44,11 +44,17 @@ jobs:
         
         echo "Generating .env file..."
         npm run supabase:env
+        
+        echo "Adding VITE_ prefix to environment variables..."
+        sed -i 's/^\(.*\)=/VITE_\1="/' .env
+        sed -i 's/$/"/' .env
         echo "Contents of .env file:"
         cat .env
         
         echo "Creating .env.testing file..."
         cp .env .env.testing
+        sed -i 's/^\(.*\)=/VITE_\1="/' .env.testing
+        sed -i 's/$/"/' .env.testing
         echo "Contents of .env.testing file:"
         cat .env.testing
         
