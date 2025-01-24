@@ -653,14 +653,17 @@ All test implementations are complete but require fixes:
 2. **CI Workflow Enhancements**
    - Added `supabase:env` and `supabase:start` scripts to package.json
    - Added `cypress:env` script to create cypress.env.json from environment variables
-   - Created `create-cypress-env.ts` script with proper logging and error handling
+   - Created `create-cypress-env.ts` script with proper logging
    - Simplified CI workflow by using npm scripts instead of inline Node.js code
+   - Fixed environment setup order in CI workflow to ensure variables are available before tests run
+   - Removed Cypress GitHub action in favor of direct npm script execution
 
 ### Technical Details
 - Using `supabase status -o env > .env` to generate environment variables
 - Added proper error handling and fallback values for CI environment
 - Configured Cypress with necessary Supabase environment variables for E2E testing
 - Using TypeScript script with logging for cypress.env.json creation
+- Environment setup now happens before any tests or dev server starts
 
 ### Dependencies
 - Added dotenv for environment variable management
@@ -678,14 +681,17 @@ All test implementations are complete but require fixes:
 2. **CI Workflow Enhancements**
    - Added `supabase:env` and `supabase:start` scripts to package.json
    - Added `cypress:env` script to create cypress.env.json from environment variables
-   - Created `create-cypress-env.ts` script with proper logging and error handling
+   - Created `create-cypress-env.ts` script with proper logging
    - Simplified CI workflow by using npm scripts instead of inline Node.js code
+   - Fixed environment setup order in CI workflow to ensure variables are available before tests run
+   - Removed Cypress GitHub action in favor of direct npm script execution
 
 ### Technical Details
 - Using `supabase status -o env > .env` to generate environment variables
 - Added proper error handling and fallback values for CI environment
 - Configured Cypress with necessary Supabase environment variables for E2E testing
 - Using TypeScript script with logging for cypress.env.json creation
+- Environment setup now happens before any tests or dev server starts
 
 ### Dependencies
 - Added dotenv for environment variable management
