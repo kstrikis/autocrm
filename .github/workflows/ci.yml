@@ -37,7 +37,7 @@ jobs:
       run: |
         supabase init --force
         supabase db start
-        supabase db reset --db-url postgresql://postgres:postgres@localhost:54322/postgres
+        supabase db reset -f --db-url postgresql://postgres:postgres@localhost:54322/postgres
 
     - name: Seed Database
       run: npm run seed:users
