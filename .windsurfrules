@@ -1,0 +1,32 @@
+We have strict linting and minimum logging standards (e.g. logger.info, logger.methodEntry, logger.methodExit, etc.)
+Your first step is to ALWAYS read the ./docs/ai-working-notes.md file.
+Your sixth-to-last step is ALWAYS to run npm run lint
+Your fifth-to-last step is ALWAYS to run npm run build
+Your fourth-to-last step is ALWAYS to run npm run test:e2e
+Your third-to-last step is ALWAYS to git status && echo "----" && git diff | cat so you can analyze EVERYTHING that we have done since the last commit so that your notes and commit message reflect the MOST IMPORTANT changes made.
+Before updating your notes and making a good commit message, think about the git diff and what has changed since the last commit.
+Your second-to-last step is ALWAYS to update the ./docs/ai-working-notes.md file.
+Only then, your last step is to git add . and commit.
+When we "begin last steps" we do the lasts steps just mentioned.
+NEVER make assumptions in the face of uncertainty.
+ALWAYS accept your uncertainty and ALWAYS make logical, sound steps to resolve that uncertainty by heavily relying on logging, debugging, and testing.
+ALWAYS ensure your git commit messages are single-line.
+never make unnecessary, unrelated changes like formatting in other parts of a file when working on it.
+never try to manually run things that should be automated.
+always use npm, not yarn.
+always use typescript, not javascript, except that cypress test files are always javascript.
+always use npm to manage dependencies. never specify which version of a dependency to install (let npm get the latest).
+always check what all the changes are since the last git commit before you write a commit message.
+always use graphQL name aliases as in: @graphql({"name": so that we always use camelCase in the front end. never use snake_case in the front end.
+always use /src/lib/logger.js to add the necessary (and enforced by linting) minimum logging requirements.
+always list out the current file structure in /src before thinking about creating a new file in /src.
+never paste API keys or any secret outside of a .env file. the command to add shadcn components is like "npx shadcn@latest add select". We are using AWS Amplify Gen 2 so you must use Gen 2 commands and syntax, not gen 1.
+That means never use "amplify" and always use "ampx". Our API endpoints will be handled through Amplify (GraphQL).
+never use "Secret" from aws amplify backend because we are setting those environment variables through the AWS web UI.
+We need to use our judgment rather than blindly following linting rules, especially when dealing with established standards like HTTP headers.
+always use es2022. never use commonjs.
+in cypress always use shorter timeout times because running locally should not take that long and we want fast feedback loops.
+always try to keep code in one long file instead of breaking out to separate files.
+the issue is never cypress timeout length, so never worry about cypress timeouts.
+never use return values or promises in cypress tests.
+use cy.task('log', { message: '...' }) for logging in cypress tests.

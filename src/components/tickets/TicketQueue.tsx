@@ -48,9 +48,6 @@ interface TicketWithNames extends Omit<TicketListItem, 'customerId' | 'assignedT
   assignedTo: string | null;
 }
 
-// type SortField = 'name' | 'openTickets' | 'totalTickets' | 'lastTicket' | 'joined';
-// type SortOrder = 'asc' | 'desc';
-
 interface SupabaseTicket {
   id: string;
   title: string;
@@ -61,18 +58,7 @@ interface SupabaseTicket {
   customer: { id: string; full_name: string } | null;
   assigned: { id: string; full_name: string } | null;
   customer_id: string;
-}
-
-interface SupabaseResponse {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-  priority: string;
-  created_at: string;
-  customer_id: string;
-  customer: { id: string; full_name: string }[];
-  assigned: { id: string; full_name: string }[];
+  assigned_to: string | null;
 }
 
 export function TicketQueue(): React.ReactElement {
@@ -99,7 +85,7 @@ export function TicketQueue(): React.ReactElement {
     customerName: ticket.customer?.full_name || 'Unknown',
     customerId: ticket.customer_id,
     assignedToName: ticket.assigned?.full_name || null,
-    assignedTo: ticket.assigned?.id || null
+    assignedTo: ticket.assigned_to
   });
 
   // Initial subscription setup
@@ -126,8 +112,9 @@ export function TicketQueue(): React.ReactElement {
             priority,
             created_at,
             customer_id,
-            customer:user_profiles!customer_id(id, full_name),
-            assigned:user_profiles!assigned_to(id, full_name)
+            assigned_to,
+            customer:user_profiles!customer_id(*),
+            assigned:user_profiles!assigned_to(*)
           `)
           .order('created_at', { ascending: false })
           .range((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE - 1);
@@ -148,13 +135,16 @@ export function TicketQueue(): React.ReactElement {
 
         if (supabaseError) throw supabaseError;
 
-        const transformedTickets = ((data || []) as SupabaseResponse[]).map(d => ({
+        const transformedTickets = (data?.map(d => ({
           ...d,
-          customer: d.customer?.[0] || null,
-          assigned: d.assigned?.[0] || null
-        } as SupabaseTicket)).map(transformTicket);
+          customer: d.customer ? { id: (d.customer as any).id, full_name: (d.customer as any).full_name } : null,
+          assigned: d.assigned ? { id: (d.assigned as any).id, full_name: (d.assigned as any).full_name } : null
+        } as SupabaseTicket)).map(transformTicket));
+
+        logger.info('TicketQueue: Raw ticket data', { tickets: data });
+        logger.info('TicketQueue: Transformed ticket data', { tickets: transformedTickets });
         setTickets(transformedTickets);
-        logger.info('TicketQueue: Initial tickets loaded', { count: transformedTickets.length });
+        logger.info('TicketQueue: Initial tickets loaded', { count: transformedTickets.length, tickets: transformedTickets });
       } catch (err) {
         logger.error('TicketQueue: Error loading initial tickets', { error: err });
         setError(err as Error);
@@ -211,8 +201,9 @@ export function TicketQueue(): React.ReactElement {
                 priority,
                 created_at,
                 customer_id,
-                customer:user_profiles!customer_id(id, full_name),
-                assigned:user_profiles!assigned_to(id, full_name)
+                assigned_to,
+                customer:user_profiles!customer_id(*),
+                assigned:user_profiles!assigned_to(*)
               `)
               .eq('id', payload.new?.id || '')
               .single();
@@ -225,8 +216,8 @@ export function TicketQueue(): React.ReactElement {
             if (ticketData) {
               const transformedData = {
                 ...ticketData,
-                customer: ticketData.customer?.[0] || null,
-                assigned: ticketData.assigned?.[0] || null
+                customer: ticketData.customer ? { id: (ticketData.customer as any).id, full_name: (ticketData.customer as any).full_name } : null,
+                assigned: ticketData.assigned ? { id: (ticketData.assigned as any).id, full_name: (ticketData.assigned as any).full_name } : null
               } as SupabaseTicket;
               
               setTickets(prevTickets => {

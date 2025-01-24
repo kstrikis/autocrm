@@ -1,5 +1,24 @@
 # AI Working Notes
 
+## Latest Changes (2024-01-24)
+
+### User Interface and TypeScript Improvements
+- Updated user role badges in UserList component:
+  - Added distinct blue styling for service rep role
+  - Fixed casing to use camelCase (serviceRep) consistently
+  - Improved visual distinction between different roles
+
+### TypeScript and Data Handling
+- Fixed TypeScript issues in TicketQueue component:
+  - Properly handled customer and assigned properties for array types
+  - Removed unused SupabaseResponse interface
+  - Enhanced logging with full ticket data
+
+### CI/CD Improvements
+- Added new seed file optimized for GitHub CI environment:
+  - Created scripts/seed-users-ci.ts for test data
+  - Ensures consistent test environment in CI pipeline
+
 ## Latest Changes (2024-01-23)
 
 ### Authentication and Loading State Improvements
@@ -509,7 +528,6 @@ All test implementations are complete but require fixes:
 - Added proper loading state handling with new `LoadingSpinner` component
 - Simplified `AuthContext` implementation by removing unnecessary complexity
 - Fixed TypeScript return types and logging in `AuthContext`
-- Improved test coverage for authentication flows
 
 ## Code Organization
 
@@ -622,3 +640,50 @@ All test implementations are complete but require fixes:
   - Added proper cleanup of Supabase subscriptions
   - Improved subscription status logging
   - Added real-time updates for ticket modifications 
+
+## 2025-01-24: CI/CD and Database Seeding Improvements
+
+### Changes Made
+1. **CI Database Seeding**
+   - Enhanced `seed-users-ci.ts` to use dotenv for Supabase credentials
+   - Improved error handling and logging in seed script
+   - Added fallback values for Supabase URL and service role key
+   - Updated CI workflow to use Supabase env scripts
+
+2. **CI Workflow Enhancements**
+   - Added `supabase:env` and `supabase:start` scripts to package.json
+   - Added `cypress:env` script to create cypress.env.json from environment variables
+   - Created `create-cypress-env.ts` script with proper logging
+   - Simplified CI workflow by using npm scripts instead of inline Node.js code
+   - Fixed environment setup order in CI workflow to ensure variables are available before tests run
+   - Added system dependencies for running Cypress in headless mode
+   - Using xvfb for virtual display in CI environment
+   - Added Kisak Mesa PPA for improved graphics driver support
+   - Fixed system dependency package names for Ubuntu 24.04
+   - Added extensive logging for environment variable debugging
+   - Using Vite testing mode with .env.testing file
+   - Fixed environment variable naming to match Supabase client expectations
+   - Added act configuration to use Ubuntu 24.04 container
+
+### Technical Details
+- Using `supabase status -o env > .env` to generate environment variables
+- Added proper error handling and fallback values for CI environment
+- Configured Cypress with necessary Supabase environment variables for E2E testing
+- Using TypeScript script with logging for cypress.env.json creation
+- Environment setup now happens before any tests or dev server starts
+- Installed graphics libraries and virtual framebuffer for headless testing
+- Using latest Mesa drivers from Kisak PPA to fix graphics compatibility issues
+- Updated to use libasound2t64 package instead of libasound2 for Ubuntu 24.04 compatibility
+- Added logging to track environment variable presence and file creation
+- Added file content verification in CI workflow
+- Creating .env.testing file with correctly named Supabase variables
+- Using start-server-and-test to run Vite in testing mode during Cypress tests
+- Renamed API_URL to VITE_SUPABASE_URL and ANON_KEY to VITE_SUPABASE_ANON_KEY
+- Configured act to use catthehacker/ubuntu:act-24.04 image for local CI testing
+
+### Dependencies
+- Added dotenv for environment variable management
+- Using @supabase/supabase-js with environment-based configuration
+- Added system dependencies: xvfb, libasound2t64, libgbm1, libgtk-3-0, libnss3, libxss1, libxtst6, libx11-xcb1
+- Added Kisak Mesa PPA for updated graphics drivers
+- Added start-server-and-test for running Vite in test mode
