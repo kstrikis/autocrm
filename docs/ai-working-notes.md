@@ -662,7 +662,7 @@ All test implementations are complete but require fixes:
    - Fixed system dependency package names for Ubuntu 24.04
    - Added extensive logging for environment variable debugging
    - Using Vite testing mode with .env.testing file
-   - Fixed environment variable prefixing to match Vite's VITE_ requirements
+   - Fixed environment variable naming to match Supabase client expectations
    - Added act configuration to use Ubuntu 24.04 container
 
 ### Technical Details
@@ -676,10 +676,9 @@ All test implementations are complete but require fixes:
 - Updated to use libasound2t64 package instead of libasound2 for Ubuntu 24.04 compatibility
 - Added logging to track environment variable presence and file creation
 - Added file content verification in CI workflow
-- Creating .env.testing file with VITE_ prefixed variables for test mode
+- Creating .env.testing file with correctly named Supabase variables
 - Using start-server-and-test to run Vite in testing mode during Cypress tests
-- Added VITE_ prefix to all environment variables to match Vite's requirements
-- Updated create-cypress-env.ts to use VITE_ prefixed variables
+- Renamed API_URL to VITE_SUPABASE_URL and ANON_KEY to VITE_SUPABASE_ANON_KEY
 - Configured act to use catthehacker/ubuntu:act-24.04 image for local CI testing
 
 ### Dependencies

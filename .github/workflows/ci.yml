@@ -49,8 +49,9 @@ jobs:
         
         echo "Creating .env.testing file..."
         cp .env .env.testing
-        sed -i 's/^\(.*\)=/VITE_\1="/' .env.testing
-        sed -i 's/$/"/' .env.testing
+        # Replace API_URL with VITE_SUPABASE_URL and ANON_KEY with VITE_SUPABASE_ANON_KEY
+        sed -i 's/^API_URL=/VITE_SUPABASE_URL=/' .env.testing
+        sed -i 's/^ANON_KEY=/VITE_SUPABASE_ANON_KEY=/' .env.testing
         echo "Contents of .env.testing file:"
         cat .env.testing
         
