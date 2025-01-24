@@ -13,8 +13,8 @@ async function getSupabaseCredentials() {
     let serviceRoleKey;
     
     try {
-      supabaseUrl = execSync("supabase status | grep 'API URL' | awk '{print $3}'", { encoding: 'utf8' }).trim();
-      serviceRoleKey = execSync("supabase status | grep 'service_role key' | awk '{print $3}'", { encoding: 'utf8' }).trim();
+      supabaseUrl = execSync("supabase status | grep 'API URL' | cut -d':' -f2- | xargs", { encoding: 'utf8' }).trim();
+      serviceRoleKey = execSync("supabase status | grep 'service_role key' | cut -d':' -f2- | xargs", { encoding: 'utf8' }).trim();
       
       if (!supabaseUrl || !serviceRoleKey) {
         throw new Error('Could not find API URL or service role key in Supabase status');
@@ -23,6 +23,10 @@ async function getSupabaseCredentials() {
       logger.info('Got Supabase credentials from CLI:', { url: supabaseUrl });
     } catch (error) {
       logger.error('Error getting credentials from Supabase CLI:', error);
+      // Fallback to default values
+      supabaseUrl = 'http://127.0.0.1:54321';
+      serviceRoleKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU';
+      logger.warn('Using fallback credentials');
     }
 
     return { supabaseUrl, serviceRoleKey };

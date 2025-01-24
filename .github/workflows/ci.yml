@@ -38,10 +38,26 @@ jobs:
         supabase init --force
         supabase db start
         supabase db reset
-        # Get Supabase credentials
-        API_URL=$(supabase status | grep 'API URL' | awk '{print $3}')
-        SERVICE_ROLE_KEY=$(supabase status | grep 'service_role key' | awk '{print $3}')
-        ANON_KEY=$(supabase status | grep 'anon key' | awk '{print $3}')
+        
+        echo "Debug: Supabase Status Output"
+        supabase status
+        echo "--------------------"
+        
+        # Get Supabase credentials with debug output
+        echo "Extracting API URL..."
+        supabase status | grep 'API URL'
+        API_URL=$(supabase status | grep 'API URL' | cut -d':' -f2- | xargs)
+        echo "API_URL=$API_URL"
+        
+        echo "Extracting service role key..."
+        supabase status | grep 'service_role key'
+        SERVICE_ROLE_KEY=$(supabase status | grep 'service_role key' | cut -d':' -f2- | xargs)
+        echo "SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+        
+        echo "Extracting anon key..."
+        supabase status | grep 'anon key'
+        ANON_KEY=$(supabase status | grep 'anon key' | cut -d':' -f2- | xargs)
+        echo "ANON_KEY=$ANON_KEY"
         
         # Export for other steps
         echo "SUPABASE_URL=$API_URL" >> $GITHUB_ENV
@@ -56,7 +72,8 @@ jobs:
         }" > cypress.env.json
         
         echo "Supabase initialized with URL: $API_URL"
-        echo "Created cypress.env.json"
+        echo "Created cypress.env.json with credentials"
+        cat cypress.env.json
     
     - name: Seed Database
       run: npm run seed-users:ci
