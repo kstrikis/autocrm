@@ -29,8 +29,6 @@ import { supabase } from '@/lib/supabase';
 import type { UserProfile, Ticket } from '@/lib/database.types';
 import type { Database } from '@/lib/database.types';
 import { useAuth } from '@/contexts/AuthContext';
-import { API } from 'aws-amplify';
-import { updateUserRole } from '@/graphql/mutations';
 
 type UserRole = Database['public']['Enums']['user_role'];
 
@@ -317,67 +315,51 @@ export function UserList(): React.ReactElement {
           throw error;
         }
       } else if (pendingAction.type === 'changeRole' && pendingAction.role) {
-        // Check current user's role first
-        const { data: currentUser, error: currentUserError } = await supabase
-          .from('user_profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-
-        logger.info('UserList: Checked current user role', { currentUser, currentUserError });
-
-        if (currentUserError) {
-          logger.error('UserList: Error checking current user role', { error: currentUserError });
-          throw currentUserError;
-        }
-
-        if (currentUser?.role !== 'admin') {
-          logger.error('UserList: Non-admin user attempted to change roles', { currentUser });
-          throw new Error('Only administrators can change user roles.');
-        }
-
-        // If changing to non-admin role, check if we're removing the last admin
-        if (pendingAction.role !== 'admin') {
-          const { data: admins, error: adminsError } = await supabase
-            .from('user_profiles')
-            .select('id, role')
-            .eq('role', 'admin');
-
-          logger.info('UserList: Checked admin users', { admins, adminsError });
-
-          if (adminsError) {
-            logger.error('UserList: Error checking admin users', { error: adminsError });
-            throw adminsError;
-          }
-
-          const adminIds = new Set(admins?.map(a => a.id) || []);
-          const selectedAdmins = userIds.filter(id => adminIds.has(id));
-
-          if (selectedAdmins.length > 0 && selectedAdmins.length >= adminIds.size) {
-            logger.error('UserList: Cannot remove all admin users', { selectedAdmins, adminIds: Array.from(adminIds) });
-            throw new Error('Cannot remove all admin roles. At least one admin must remain.');
-          }
-        }
-
         logger.info('UserList: Updating user role', { userId: userIds[0], newRole: pendingAction.role });
           
-        const { data: { updateUserRole: updatedUser }, errors } = await API.graphql({
-          query: updateUserRole,
-          variables: {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          logger.error('UserList: Failed to get session', { error: sessionError });
+          throw new Error('Failed to get session');
+        }
+        
+        if (!session?.access_token) {
+          logger.error('UserList: No access token available');
+          throw new Error('No access token available');
+        }
+
+        logger.info('UserList: Got session token', { token: session.access_token.substring(0, 20) + '...' });
+
+        const { data: response, error: functionError } = await supabase.functions.invoke('update-user-role', {
+          body: { 
             userId: userIds[0],
             role: pendingAction.role
+          },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
           }
         });
 
-        if (errors?.length) {
-          logger.error('UserList: GraphQL errors updating user role', { errors });
-          throw new Error(errors[0].message);
+        if (functionError) {
+          logger.error('UserList: Edge function error', { error: functionError });
+          throw new Error(`Edge function error: ${functionError.message}`);
+        }
+
+        // Edge functions can return application errors in the response
+        if (response?.error) {
+          logger.error('UserList: Application error from edge function', { error: response.error });
+          throw new Error(response.error);
+        }
+
+        if (!response?.data) {
+          logger.error('UserList: No data returned from update', { response });
+          throw new Error('No data returned from update');
         }
 
         logger.info('UserList: Successfully updated user role', { 
           userId: userIds[0],
           requestedRole: pendingAction.role,
-          actualRole: updatedUser.role
+          actualRole: response.data.role
         });
       }
 

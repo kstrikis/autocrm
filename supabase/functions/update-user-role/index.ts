@@ -1,77 +1,168 @@
-import { serve } from 'https://deno.fresh.land/std@0.177.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
+// Follow this setup guide to integrate the Deno language server with your editor:
+// https://deno.land/manual/getting_started/setup_your_environment
+// This enables autocomplete, go to definition, etc.
 
-interface RequestBody {
-  userId: string
-  role: string
+import "jsr:@supabase/functions-js/edge-runtime.d.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('Missing required environment variables');
 }
 
-serve(async (req) => {
-  try {
-    // Create a Supabase client with the admin key
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+interface UpdateRoleBody {
+  userId: string;
+  role: 'customer' | 'service_rep' | 'admin';
+}
+
+Deno.serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
     // Only allow POST requests
     if (req.method !== 'POST') {
+      console.log('Method not allowed:', req.method);
       return new Response(
         JSON.stringify({ error: 'Method not allowed' }),
-        { status: 405 }
-      )
+        { 
+          status: 405,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
-    // Get the request body
-    const { userId, role } = await req.json() as RequestBody
-
-    // Verify the user exists and is an admin
-    const { data: { user: adminUser }, error: authError } = await supabaseAdmin.auth.getUser()
-    if (authError || !adminUser) {
+    // Get the JWT from authorization header
+    const authHeader = req.headers.get('Authorization');
+    console.log('Auth header:', authHeader);
+    if (!authHeader?.startsWith('Bearer ')) {
+      console.log('Missing or invalid authorization header');
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401 }
-      )
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    // Verify the JWT and get the user
+    const jwt = authHeader.split(' ')[1];
+    console.log('JWT token:', jwt.substring(0, 20) + '...');
+    const { data: { user: adminUser }, error: authError } = await supabase.auth.getUser(jwt);
+    console.log('Auth result:', { user: adminUser, error: authError });
+    if (authError || !adminUser) {
+      console.log('Invalid token error:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid authorization token', details: authError }),
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     // Get admin's role from user_profiles
-    const { data: adminProfile, error: adminProfileError } = await supabaseAdmin
+    const { data: adminProfile, error: adminProfileError } = await supabase
       .from('user_profiles')
       .select('role')
       .eq('id', adminUser.id)
-      .single()
+      .single();
 
+    console.log('Admin profile:', { profile: adminProfile, error: adminProfileError });
     if (adminProfileError || adminProfile.role !== 'admin') {
+      console.log('Not an admin:', { role: adminProfile?.role, error: adminProfileError });
       return new Response(
         JSON.stringify({ error: 'Unauthorized - Admin role required' }),
-        { status: 401 }
-      )
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
-    // Update the user's metadata
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      userId,
-      { user_metadata: { role } }
-    )
+    // Get the request body
+    const { userId, role } = await req.json() as UpdateRoleBody;
+
+    // Get current admins to prevent removing last admin
+    const { data: admins, error: adminsError } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('role', 'admin');
+
+    if (adminsError) {
+      console.log('Error fetching admins:', adminsError);
+      return new Response(
+        JSON.stringify({ error: 'Error fetching admins' }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    // If changing from admin to another role, ensure it's not the last admin
+    if (role !== 'admin' && admins.length === 1 && admins[0].id === userId) {
+      console.log('Attempting to remove last admin');
+      return new Response(
+        JSON.stringify({ error: 'Cannot remove last admin role' }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    // Update the user's role directly using the service role client
+    const { data: updatedUser, error: updateError } = await supabase
+      .from('user_profiles')
+      .update({ 
+        role: role,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId)
+      .select()
+      .single();
 
     if (updateError) {
+      console.log('Error updating role:', updateError);
       return new Response(
         JSON.stringify({ error: updateError.message }),
-        { status: 500 }
-      )
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
+    console.log('Successfully updated user role:', updatedUser);
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ data: updatedUser }),
       { 
         status: 200,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
-    )
+    );
   } catch (error) {
+    console.error('Unexpected error:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { status: 500 }
-    )
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
   }
-})
+});
