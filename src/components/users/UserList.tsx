@@ -169,6 +169,35 @@ export function UserList(): React.ReactElement {
     }
   };
 
+  // Set up realtime subscription
+  useEffect(() => {
+    logger.methodEntry('UserList.setupSubscription');
+    const subscription = supabase
+      .channel('supabase_realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_profiles'
+        },
+        () => {
+          logger.info('UserList: Received realtime update for user_profiles');
+          void fetchUsers();
+        }
+      )
+      .subscribe((status) => {
+        logger.info('UserList: Subscription status changed', { status });
+      });
+
+    return () => {
+      logger.methodEntry('UserList.cleanup');
+      void subscription.unsubscribe();
+      logger.methodExit('UserList.cleanup');
+    };
+  }, []);
+
+  // Fetch users when filters change
   useEffect(() => {
     void fetchUsers();
   }, [page, sortField, sortOrder, hasOpenTicketsFilter, roleFilter]);
