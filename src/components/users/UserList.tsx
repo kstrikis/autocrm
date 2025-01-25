@@ -317,18 +317,11 @@ export function UserList(): React.ReactElement {
       } else if (pendingAction.type === 'changeRole' && pendingAction.role) {
         logger.info('UserList: Updating user role', { userId: userIds[0], newRole: pendingAction.role });
           
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) {
-          logger.error('UserList: Failed to get session', { error: sessionError });
-          throw new Error('Failed to get session');
-        }
-        
+        const { data: { session } } = await supabase.auth.getSession();
         if (!session?.access_token) {
           logger.error('UserList: No access token available');
           throw new Error('No access token available');
         }
-
-        logger.info('UserList: Got session token', { token: session.access_token.substring(0, 20) + '...' });
 
         const { data: response, error: functionError } = await supabase.functions.invoke('update-user-role', {
           body: { 
