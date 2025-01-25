@@ -114,7 +114,7 @@ export function UserList(): React.ReactElement {
 
         return {
           id: user.id,
-          fullName: user.fullName,
+          fullName: user.fullName || user.displayName || user.id.split('-')[0],
           role: user.role as UserRole,
           createdAt: user.createdAt,
           totalTickets: tickets.length,

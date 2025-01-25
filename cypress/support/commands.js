@@ -1,7 +1,5 @@
 /// <reference types="cypress" />
-
 import { createClient } from '@supabase/supabase-js'
-import { logger } from '../../src/lib/node-logger.ts'
 
 // Initialize Supabase admin client for admin operations
 const supabaseAdmin = createClient(
@@ -35,113 +33,84 @@ const supabase = createClient(
 // Command to clean up test user
 Cypress.Commands.add('cleanupTestUser', (email) => {
   cy.task('log', { message: '🧹 Starting cleanup of test user', email })
-  cy.wrap(
-    supabaseAdmin.auth.admin.deleteUser(email)
-      .catch((err) => {
-        // Ignore if user doesn't exist
-        if (!err.message.includes('User not found')) {
-          cy.task('log', { message: '❌ Error cleaning up user', error: err })
-          throw err
-        }
-        cy.task('log', { message: '💡 User not found during cleanup', email })
-      })
-  ).then(() => {
-    cy.task('log', { message: '✅ User cleanup complete', email })
-  })
-})
-
-// Command to create a test user
-Cypress.Commands.add('createTestUser', (email, fullName, role = 'customer') => {
-  cy.task('log', { message: '👤 Creating test user', email, fullName, role });
-
-  // First check for existing user
+  
+  // First get the user ID from auth
   cy.wrap(supabaseAdmin.auth.admin.listUsers())
     .then(({ data: { users }, error: listError }) => {
       if (listError) {
-        cy.task('log', { message: '❌ Error listing users', error: listError });
-        throw listError;
+        cy.task('log', { message: '❌ Error listing users', error: listError })
+        throw listError
       }
 
-      const existingUser = users.find(u => u.email === email);
-      if (existingUser) {
-        cy.task('log', { message: '💡 Found existing user, deleting first', userId: existingUser.id });
-        return supabaseAdmin.auth.admin.deleteUser(existingUser.id)
-          .then(() => {
-            cy.task('log', { message: '✅ Successfully deleted existing user', email });
-          });
+      const user = users.find(u => u.email === email)
+      if (!user) {
+        cy.task('log', { message: '💡 User not found during cleanup', email })
+        return
       }
-    })
-    .then(() => {
-      // Create auth user first
-      return supabaseAdmin.auth.admin.createUser({
-        email,
-        password: 'testpass123',
-        email_confirm: true,
-        user_metadata: {
-          full_name: fullName,
-          role
-        }
-      });
-    })
-    .then((response) => {
-      if (response.error) {
-        cy.task('log', { message: '❌ Error creating auth user', error: response.error });
-        throw response.error;
-      }
-      const userId = response.data?.user?.id;
-      cy.task('log', { message: '✅ Auth user created successfully', userId });
 
-      // Then create user profile
-      return supabaseAdmin
+      // Delete the user profile first
+      cy.wrap(supabaseAdmin
         .from('user_profiles')
-        .insert([
-          {
-            id: userId,
-            full_name: fullName,
-            role
-          }
-        ])
-        .select()
-        .then((profileResponse) => {
-          if (profileResponse.error) {
-            cy.task('log', { message: '❌ Error creating user profile', error: profileResponse.error });
-            throw profileResponse.error;
-          }
-          cy.task('log', { message: '✅ User profile created successfully' });
-          return userId;
-        });
-    });
-});
+        .delete()
+        .eq('id', user.id))
+
+      cy.task('log', { message: '✅ User profile deleted', email })
+
+      // Then delete the auth user
+      cy.wrap(supabaseAdmin.auth.admin.deleteUser(user.id))
+      cy.task('log', { message: '✅ Auth user deleted', email })
+    })
+
+  cy.task('log', { message: '✅ User cleanup complete', email })
+})
+
+// Command to create an admin managed user
+Cypress.Commands.add('createAdminManagedUser', (email, fullName, role) => {
+  cy.task('log', { message: '🔑 Creating admin managed user', email, role })
+  cy.wrap(supabaseAdmin.auth.admin.createUser({
+    email,
+    password: 'testpass123',
+    email_confirm: true,
+    user_metadata: {
+      full_name: fullName,
+      display_name: fullName,
+      role
+    }
+  }))
+  .then(({ data: { user }, error }) => {
+    if (error) {
+      cy.task('log', { message: '❌ Error creating admin managed user', error })
+      throw error
+    }
+    cy.task('log', { message: '✅ Admin managed user created', userId: user.id, email, role })
+    return user
+  })
+})
 
 // Command to sign in via Supabase
 Cypress.Commands.add('supabaseSignIn', (email, password) => {
   cy.task('log', { message: '🔑 Signing in user', email })
-  cy.wrap(
-    supabase.auth.signInWithPassword({
-      email,
-      password
+  cy.wrap(supabase.auth.signInWithPassword({ email, password }))
+    .then(({ error }) => {
+      if (error) {
+        cy.task('log', { message: '❌ Error signing in', error })
+        throw error
+      }
+      cy.task('log', { message: '✅ Sign in successful' })
     })
-  ).then((response) => {
-    if (response.error) {
-      cy.task('log', { message: '❌ Error signing in', error: response.error })
-      throw response.error
-    }
-    cy.task('log', { message: '✅ Sign in successful', userId: response.data?.user?.id })
-  })
 })
 
 // Command to sign out via Supabase
 Cypress.Commands.add('supabaseSignOut', () => {
   cy.task('log', { message: '🚪 Signing out user' })
-  cy.wrap(
-    supabase.auth.signOut()
-  ).then((response) => {
-    if (response.error) {
-      cy.task('log', { message: '❌ Error signing out', error: response.error })
-      throw response.error
-    }
-    cy.task('log', { message: '✅ Sign out successful' })
-  })
+  cy.wrap(supabase.auth.signOut())
+    .then(({ error }) => {
+      if (error) {
+        cy.task('log', { message: '❌ Error signing out', error })
+        throw error
+      }
+      cy.task('log', { message: '✅ Sign out successful' })
+    })
 })
 
 // Command to clean up test tickets
@@ -150,33 +119,10 @@ Cypress.Commands.add('cleanupTestTickets', () => {
   cy.wrap(
     supabaseAdmin
       .from('tickets')
-      .select('id')
-  ).then((response) => {
-    if (response.error) {
-      cy.task('log', { message: '❌ Error fetching tickets for cleanup', error: response.error })
-      throw response.error
-    }
-
-    if (!response.data?.length) {
-      cy.task('log', { message: '💡 No tickets to clean up' })
-    } else {
-      const ticketIds = response.data.map(t => t.id)
-      cy.task('log', { message: '🎫 Found tickets to clean up', count: ticketIds.length })
-
-      cy.wrap(
-        supabaseAdmin
-          .from('tickets')
-          .delete()
-          .in('id', ticketIds)
-      ).then((deleteResponse) => {
-        if (deleteResponse.error) {
-          cy.task('log', { message: '❌ Error deleting tickets', error: deleteResponse.error })
-          throw deleteResponse.error
-        }
-        cy.task('log', { message: '✅ Successfully cleaned up tickets', count: deleteResponse.data?.length || 0 })
-      })
-    }
-  })
+      .delete()
+      .neq('id', 0) // Ensure we don't delete any system tickets
+  )
+  cy.task('log', { message: '✅ Tickets cleanup complete' })
 })
 
 // Command to seed test tickets
@@ -275,13 +221,8 @@ Cypress.Commands.add('seedTestTickets', (tickets) => {
         .from('tickets')
         .insert(processedTickets)
         .select()
-    ).then(({ data, error }) => {
-      if (error) {
-        cy.task('log', { message: '❌ Database Error', error })
-        throw error
-      }
-      cy.task('log', { message: '✅ Successfully created tickets', count: data.length })
-    })
+    )
+    cy.task('log', { message: '✅ Successfully created tickets', count: processedTickets.length })
   })
 })
 
@@ -314,22 +255,16 @@ Cypress.Commands.add('cleanupTestUsers', () => {
       cy.task('log', { message: '👥 Found test users to clean up', count: testUsers.length })
 
       // Delete each test user
-      const deletePromises = testUsers.map(user => 
-        supabaseAdmin.auth.admin.deleteUser(user.id)
+      testUsers.forEach(user => 
+        cy.wrap(supabaseAdmin.auth.admin.deleteUser(user.id))
       )
-
-      cy.wrap(
-        Promise.all(deletePromises)
-      ).then(() => {
-        cy.task('log', { message: '✅ Successfully cleaned up test users', count: testUsers.length })
-      })
+      cy.task('log', { message: '✅ Successfully cleaned up test users', count: testUsers.length })
     }
   })
 })
 
 // Command to login as admin
 Cypress.Commands.add('loginAsAdmin', (email, password) => {
-  logger.methodEntry('loginAsAdmin')
   cy.task('log', { message: '🔑 Logging in as admin', email })
   cy.visit('/')
   cy.get('input[type="email"]').type(email)
@@ -338,33 +273,4 @@ Cypress.Commands.add('loginAsAdmin', (email, password) => {
   cy.url().should('include', '/dashboard')
   cy.contains('Welcome').should('be.visible')
   cy.task('log', { message: '✅ Admin login complete' })
-  logger.methodExit('loginAsAdmin')
 })
-
-// Command to create test user
-Cypress.Commands.add('createTestUserAdmin', (email, name, role = 'customer') => {
-  logger.methodEntry('createTestUserAdmin')
-  cy.task('log', { message: '👤 Creating test user', email, role })
-  cy.wrap(
-    supabaseAdmin.auth.admin.createUser({
-      email,
-      password: 'StrongP@ssw0rd123!',
-      email_confirm: true,
-      user_metadata: {
-        full_name: name,
-        role: role
-      }
-    })
-  ).then((response) => {
-    if (response.error) {
-      cy.task('log', { message: '❌ Error creating test user', error: response.error })
-      throw response.error
-    }
-    cy.task('log', { message: '✅ Test user created', userId: response.data.user.id })
-  })
-  logger.methodExit('createTestUserAdmin')
-})
-
-// Add any custom commands here
-// For example:
-// Cypress.Commands.add('login', (email, password) => { ... }) 

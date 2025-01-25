@@ -1,5 +1,4 @@
 /// <reference types="cypress" />
-import { logger } from '../../src/lib/node-logger.ts'
 
 describe('Authentication Flow', () => {
   const TEST_USER_EMAIL = 'test@example.com'
@@ -7,22 +6,22 @@ describe('Authentication Flow', () => {
   const TEST_USER_NAME = 'Test User'
 
   beforeEach(() => {
-    logger.methodEntry('beforeEach')
+    cy.task('log', { message: '🔄 Starting test setup' })
     cy.cleanupTestUser(TEST_USER_EMAIL)
     cy.clearCookies()
     cy.clearLocalStorage()
     cy.visit('/')
-    logger.methodExit('beforeEach')
+    cy.task('log', { message: '✅ Test setup complete' })
   })
 
   afterEach(() => {
-    logger.methodEntry('afterEach')
+    cy.task('log', { message: '🧹 Starting test cleanup' })
     cy.cleanupTestUser(TEST_USER_EMAIL)
-    logger.methodExit('afterEach')
+    cy.task('log', { message: '✅ Test cleanup complete' })
   })
 
   it('should show welcome message and auth options', () => {
-    logger.methodEntry('test: should show welcome message')
+    cy.task('log', { message: '🔍 Checking welcome message and auth options' })
     // Verify page header
     cy.contains('Welcome to AutoCRM').should('be.visible')
     cy.contains('Sign in or create an account to get started').should('be.visible')
@@ -38,11 +37,11 @@ describe('Authentication Flow', () => {
     cy.contains('Demo Customer').should('be.visible')
     cy.contains('Demo Service Rep').should('be.visible')
     cy.contains('Demo Admin').should('be.visible')
-    logger.methodExit('test: should show welcome message')
+    cy.task('log', { message: '✅ Welcome page verification complete' })
   })
 
   it('should validate login form fields', () => {
-    logger.methodEntry('test: should validate login form')
+    cy.task('log', { message: '🔍 Testing login form validation' })
     // Try submitting empty form
     cy.get('button').contains('Sign In').click()
 
@@ -54,10 +53,11 @@ describe('Authentication Flow', () => {
     cy.get('input[type="email"]').type('invalid-email')
     cy.get('button').contains('Sign In').click()
     cy.contains('Invalid email address').should('be.visible')
-    logger.methodExit('test: should validate login form')
+    cy.task('log', { message: '✅ Login form validation complete' })
   })
 
   it('should validate signup form fields', () => {
+    cy.task('log', { message: '🔍 Testing signup form validation' })
     // Switch to signup tab
     cy.contains('Sign Up').click()
 
@@ -84,10 +84,11 @@ describe('Authentication Flow', () => {
     cy.get('input[name="confirmPassword"]').clear().type('DifferentP@ssw0rd123!')
     cy.get('button').contains('Create Account').click()
     cy.contains("Passwords don't match").should('be.visible')
+    cy.task('log', { message: '✅ Signup form validation complete' })
   })
 
   it('should handle successful signup and login', () => {
-    logger.methodEntry('test: should handle successful signup')
+    cy.task('log', { message: '🔍 Testing successful signup flow' })
     // Switch to signup tab
     cy.contains('Sign Up').click()
 
@@ -101,9 +102,11 @@ describe('Authentication Flow', () => {
     // Should show success message and redirect to dashboard
     cy.contains('Success').should('be.visible')
     cy.url().should('include', '/dashboard')
+    cy.task('log', { message: '✅ Signup successful' })
 
     // Sign out
     cy.contains('Logout').click()
+    cy.task('log', { message: '🔍 Testing login with new account' })
 
     // Try logging in with new account
     cy.visit('/auth')
@@ -113,14 +116,15 @@ describe('Authentication Flow', () => {
 
     // Should redirect to dashboard after login
     cy.url().should('include', '/dashboard')
-    logger.methodExit('test: should handle successful signup')
+    cy.task('log', { message: '✅ Login successful' })
   })
 
   it('should handle demo account login', () => {
-    logger.methodEntry('test: should handle demo login')
+    cy.task('log', { message: '🔍 Testing demo account login' })
     // Click demo customer button
     cy.contains('Demo Customer').click()
     cy.url().should('include', '/dashboard')
+    cy.task('log', { message: '✅ Demo customer login successful' })
 
     // Sign out
     cy.contains('Logout').click()
@@ -129,10 +133,11 @@ describe('Authentication Flow', () => {
     cy.visit('/auth')
     cy.contains('Demo Service Rep').click()
     cy.url().should('include', '/dashboard')
-    logger.methodExit('test: should handle demo login')
+    cy.task('log', { message: '✅ Demo service rep login successful' })
   })
 
   it('should handle invalid login attempts', () => {
+    cy.task('log', { message: '🔍 Testing invalid login attempts' })
     // Try logging in with invalid credentials
     cy.get('input[type="email"]').type('invalid@example.com')
     cy.get('input[type="password"]').type('WrongPassword123!')
@@ -144,5 +149,6 @@ describe('Authentication Flow', () => {
 
     // Should stay on auth page
     cy.url().should('include', '/auth')
+    cy.task('log', { message: '✅ Invalid login handling verified' })
   })
 })
