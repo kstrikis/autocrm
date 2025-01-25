@@ -51,8 +51,8 @@ Cypress.Commands.add('cleanupTestUser', (email) => {
 })
 
 // Command to create a test user
-Cypress.Commands.add('createTestUser', (email, password, metadata = {}) => {
-  cy.task('log', { message: '👤 Creating test user', email, metadata });
+Cypress.Commands.add('createTestUser', (email, fullName, role = 'customer') => {
+  cy.task('log', { message: '👤 Creating test user', email, fullName, role });
 
   // First check for existing user
   cy.wrap(supabaseAdmin.auth.admin.listUsers())
@@ -72,30 +72,44 @@ Cypress.Commands.add('createTestUser', (email, password, metadata = {}) => {
       }
     })
     .then(() => {
+      // Create auth user first
       return supabaseAdmin.auth.admin.createUser({
         email,
-        password,
+        password: 'testpass123',
         email_confirm: true,
         user_metadata: {
-          ...metadata,
-          full_name: metadata.full_name || 'Test User',
-          display_name: metadata.display_name || 'Test',
-          role: metadata.role || 'customer'
+          full_name: fullName,
+          role
         }
       });
     })
     .then((response) => {
       if (response.error) {
-        cy.task('log', { message: '❌ Error creating test user', error: response.error });
+        cy.task('log', { message: '❌ Error creating auth user', error: response.error });
         throw response.error;
       }
       const userId = response.data?.user?.id;
-      cy.task('log', { message: '✅ Test user created successfully', userId });
-      return userId;
-    })
-    .then(userId => {
-      cy.task('log', { message: '🆔 Returning user ID', userId, type: typeof userId });
-      return userId;
+      cy.task('log', { message: '✅ Auth user created successfully', userId });
+
+      // Then create user profile
+      return supabaseAdmin
+        .from('user_profiles')
+        .insert([
+          {
+            id: userId,
+            full_name: fullName,
+            role
+          }
+        ])
+        .select()
+        .then((profileResponse) => {
+          if (profileResponse.error) {
+            cy.task('log', { message: '❌ Error creating user profile', error: profileResponse.error });
+            throw profileResponse.error;
+          }
+          cy.task('log', { message: '✅ User profile created successfully' });
+          return userId;
+        });
     });
 });
 
@@ -311,6 +325,44 @@ Cypress.Commands.add('cleanupTestUsers', () => {
       })
     }
   })
+})
+
+// Command to login as admin
+Cypress.Commands.add('loginAsAdmin', (email, password) => {
+  logger.methodEntry('loginAsAdmin')
+  cy.task('log', { message: '🔑 Logging in as admin', email })
+  cy.visit('/')
+  cy.get('input[type="email"]').type(email)
+  cy.get('input[type="password"]').type(password)
+  cy.get('button').contains('Sign In').click()
+  cy.url().should('include', '/dashboard')
+  cy.contains('Welcome').should('be.visible')
+  cy.task('log', { message: '✅ Admin login complete' })
+  logger.methodExit('loginAsAdmin')
+})
+
+// Command to create test user
+Cypress.Commands.add('createTestUserAdmin', (email, name, role = 'customer') => {
+  logger.methodEntry('createTestUserAdmin')
+  cy.task('log', { message: '👤 Creating test user', email, role })
+  cy.wrap(
+    supabaseAdmin.auth.admin.createUser({
+      email,
+      password: 'StrongP@ssw0rd123!',
+      email_confirm: true,
+      user_metadata: {
+        full_name: name,
+        role: role
+      }
+    })
+  ).then((response) => {
+    if (response.error) {
+      cy.task('log', { message: '❌ Error creating test user', error: response.error })
+      throw response.error
+    }
+    cy.task('log', { message: '✅ Test user created', userId: response.data.user.id })
+  })
+  logger.methodExit('createTestUserAdmin')
 })
 
 // Add any custom commands here
