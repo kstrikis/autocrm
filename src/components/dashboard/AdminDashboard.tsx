@@ -10,7 +10,7 @@ interface Props {
 export function AdminDashboard({ className }: Props): React.ReactElement {
   logger.methodEntry("AdminDashboard");
 
-  useEffect(() => {
+  useEffect((): (() => void) => {
     logger.info("AdminDashboard mounted");
     return () => {
       logger.info("AdminDashboard unmounted");
