@@ -698,3 +698,28 @@ All test implementations are complete but require fixes:
 - Added system dependencies: xvfb, libasound2t64, libgbm1, libgtk-3-0, libnss3, libxss1, libxtst6, libx11-xcb1
 - Added Kisak Mesa PPA for updated graphics drivers
 - Added start-server-and-test for running Vite in test mode
+
+## Latest Changes (2025-01-25)
+
+### User Role Management Improvements
+- Migrated user role updates from Amplify to Supabase:
+  - Removed Amplify GraphQL schema and functions
+  - Created Supabase edge function for role updates
+  - Added proper JWT validation and admin role checks
+  - Improved error handling and logging
+  - Added safety check to prevent removing last admin
+- Updated UserList component:
+  - Switched from GraphQL to Supabase edge function
+  - Added proper session token handling
+  - Improved error handling and user feedback
+  - Added detailed logging for role updates
+- Fixed TypeScript issues:
+  - Added return type to AdminDashboard useEffect
+  - Improved type safety in edge function
+
+### Next Steps
+- Consider adding role update audit logging
+- Add batch role update functionality
+- Improve error messages for specific failure cases
+- Add confirmation dialog for role changes
+- Consider caching admin users list
