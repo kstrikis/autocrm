@@ -168,19 +168,20 @@ import { supabase, supabaseAdmin } from './supabase.js'
  * @param {Object} options.metadata - Additional user metadata
  */
 Cypress.Commands.add('createAdminManagedUser', (email, options = {}) => {
+  cy.pushBuffer();
+  cy.pushToLog(`createAdminManagedUser: ${email}`);
+
   const defaults = {
     fullName: email.split('@')[0],
     role: 'service-rep',
     password: 'testpass123'
-  }
+  };
   
   const config = {
     ...defaults,
     ...options,
     displayName: options.displayName || options.fullName || defaults.fullName
-  }
-
-  cy.logStep('Creating admin managed user', { message: '🔑 Creating admin managed user', email, role: config.role, fullName: config.fullName })
+  };
 
   return cy.wrap(
     supabaseAdmin.auth.admin.createUser({
@@ -196,13 +197,16 @@ Cypress.Commands.add('createAdminManagedUser', (email, options = {}) => {
     })
   ).then(({ data: { user }, error }) => {
     if (error) {
-      cy.logStep('Error creating admin managed user', { isError: true, message: '❌ Error creating admin managed user', error })
-      throw error
+      cy.pushToLog(`error: ${error.message}`);
+      cy.popBuffer();
+      throw error; // This will be caught by Cypress's built-in error handling
     }
-    cy.logStep('Admin managed user created', { message: '✅ Admin managed user created', userId: user.id, email, role: config.role })
-    return cy.wrap(user)
-  })
-})
+
+    cy.pushToLog(`created (id: ${user.id}, role: ${config.role})`);
+    cy.popBuffer();
+    return cy.wrap(user);
+  });
+});
 
 /**
  * Creates a new user through the standard signup flow
@@ -215,19 +219,20 @@ Cypress.Commands.add('createAdminManagedUser', (email, options = {}) => {
  * @param {Object} options.metadata - Additional user metadata
  */
 Cypress.Commands.add('createTestUser', (email, options = {}) => {
+  cy.pushBuffer();
+  cy.pushToLog(`createTestUser: ${email}`);
+
   const defaults = {
     password: 'testpass123',
     fullName: email.split('@')[0],
     role: 'customer'
-  }
+  };
   
   const config = {
     ...defaults,
     ...options,
     displayName: options.displayName || options.fullName || defaults.fullName
-  }
-
-  cy.logStep('Creating test user', { message: '🔑 Creating test user', email, role: config.role, fullName: config.fullName })
+  };
 
   return cy.wrap(
     supabase.auth.signUp({
@@ -244,59 +249,69 @@ Cypress.Commands.add('createTestUser', (email, options = {}) => {
     })
   ).then((response) => {
     if (response.error) {
-      cy.logStep('Error creating test user', { isError: true, message: '❌ Error creating test user', error: response.error })
-      throw response.error
+      cy.pushToLog(`error: ${response.error.message}`);
+      cy.popBuffer();
+      throw response.error; // Cypress will catch this automatically
     }
-    cy.logStep('Test user created', { message: '✅ Successfully created test user', userId: response.data?.user?.id, email, metadata: response.data?.user?.user_metadata })
-    return response
-  })
-})
+
+    const userId = response.data?.user?.id;
+    cy.pushToLog(`created (id: ${userId}, role: ${config.role})`);
+    cy.popBuffer();
+    return response;
+  });
+});
 
 /**
  * Queries all users from the database
  * Returns combined data from auth and user_profiles tables
  */
 Cypress.Commands.add('queryAllUsers', () => {
-  cy.logStep('Querying all users from database', { message: '🔍 Querying all users from database' })
+  cy.pushBuffer();
+  cy.pushToLog('queryAllUsers');
 
   return cy.wrap(
     supabaseAdmin.auth.admin.listUsers()
   ).then(({ data: { users }, error }) => {
     if (error) {
-      cy.logStep('Error querying users', { isError: true, message: '❌ Error querying users', error })
-      throw error
+      cy.pushToLog(`error listing users: ${error.message}`);
+      cy.popBuffer();
+      throw error;
     }
 
-    // Get user profiles for all users
     return cy.wrap(
       supabaseAdmin
         .from('user_profiles')
         .select('*')
     ).then(({ data: profiles, error: profileError }) => {
       if (profileError) {
-        cy.logStep('Error querying user profiles', { isError: true, message: '❌ Error querying user profiles', error: profileError })
-        throw profileError
+        cy.pushToLog(`error fetching profiles: ${profileError.message}`);
+        cy.popBuffer();
+        throw profileError;
       }
 
-      // Combine auth users with their profiles
-      const combinedUsers = users.map(user => {
-        const profile = profiles.find(p => p.id === user.id) || {}
-        return {
-          ...user,
-          profile
-        }
-      })
+      // Combine and format results
+      const combinedUsers = users.map(user => ({
+        ...user,
+        profile: profiles.find(p => p.id === user.id) || {}
+      }));
 
-      cy.logStep('Users retrieved', { message: '✅ Successfully retrieved all users', count: combinedUsers.length, roles: combinedUsers.reduce((acc, user) => {
-        const role = user.profile.role || 'unknown'
-        acc[role] = (acc[role] || 0) + 1
-        return acc
-      }, {}) })
+      // Format role counts
+      const roleCounts = combinedUsers.reduce((acc, { profile }) => {
+        const role = profile.role || 'unknown';
+        acc[role] = (acc[role] || 0) + 1;
+        return acc;
+      }, {});
 
-      return combinedUsers
-    })
-  })
-})
+      cy.pushToLog(
+        `found ${combinedUsers.length} users ` +
+        `(${Object.entries(roleCounts).map(([r, c]) => `${r}:${c}`).join(', ')})`
+      );
+      
+      cy.popBuffer();
+      return combinedUsers;
+    });
+  });
+});
 
 /**
  * Removes a test user and their associated data
@@ -305,39 +320,52 @@ Cypress.Commands.add('cleanupTestUser', (email) => {
   cy.pushBuffer();
   cy.pushToLog(`cleanupTestUser: ${email}`);
 
-  cy.wrap(
+  return cy.wrap(
     supabaseAdmin.auth.admin.listUsers()
   ).then(({ data: { users }, error: listError }) => {
     if (listError) {
-      cy.pushToLog(`error listing users`);
+      cy.pushToLog(`error listing users: ${listError.message}`);
       cy.popBuffer();
       throw listError;
     }
 
     const user = users.find(u => u.email === email);
     if (!user) {
-      cy.pushToLog(`not found`);
+      cy.pushToLog('user not found');
       cy.popBuffer();
-      return;
+      return cy.wrap(null); // Wrap null in cy command
     }
 
-    // Delete the user profile first
-    cy.wrap(
+    // Delete user profile
+    return cy.wrap(
       supabaseAdmin
         .from('user_profiles')
         .delete()
         .eq('id', user.id)
-    ).then(() => {
-      // Then delete the auth user
-      cy.wrap(
-        supabaseAdmin.auth.admin.deleteUser(user.id)
-      ).then(() => {
-        cy.pushToLog(`deleted`);
+    ).then((profileDeleteResult) => {
+      if (profileDeleteResult.error) {
+        cy.pushToLog(`profile deletion failed: ${profileDeleteResult.error.message}`);
         cy.popBuffer();
+        throw profileDeleteResult.error;
+      }
+
+      // Delete auth user
+      return cy.wrap(
+        supabaseAdmin.auth.admin.deleteUser(user.id)
+      ).then((authDeleteResult) => {
+        if (authDeleteResult.error) {
+          cy.pushToLog(`auth deletion failed: ${authDeleteResult.error.message}`);
+          cy.popBuffer();
+          throw authDeleteResult.error;
+        }
+
+        cy.pushToLog('successfully deleted user');
+        cy.popBuffer();
+        return cy.wrap(true); // Wrap boolean return value
       });
     });
   });
-})
+});
 
 // ===================================
 // Authentication Commands
@@ -350,12 +378,13 @@ Cypress.Commands.add('cleanupTestUser', (email) => {
  * @param {string} options.password - User's password (defaults to 'testpass123')
  */
 Cypress.Commands.add('supabaseSignIn', (email, options = {}) => {
+  cy.pushBuffer();
+  cy.pushToLog(`supabaseSignIn: ${email}`);
+
   const config = {
     password: 'testpass123',
     ...options
-  }
-
-  cy.logStep('Signing in user', { message: '🔑 Signing in user', email })
+  };
 
   return cy.wrap(
     supabase.auth.signInWithPassword({
@@ -364,30 +393,37 @@ Cypress.Commands.add('supabaseSignIn', (email, options = {}) => {
     })
   ).then((response) => {
     if (response.error) {
-      cy.logStep('Error signing in', { isError: true, message: '❌ Error signing in', error: response.error })
-      throw response.error
+      cy.pushToLog(`error: ${response.error.message}`);
+      cy.popBuffer();
+      throw response.error;
     }
-    cy.logStep('Signed in', { message: '✅ Successfully signed in', userId: response.data?.user?.id, email, metadata: response.data?.user?.user_metadata })
-    return cy.wrap(response)
-  })
-})
+
+    cy.pushToLog(`success (userId: ${response.data?.user?.id})`);
+    cy.popBuffer();
+    return cy.wrap(response);
+  });
+});
 
 /**
  * Signs out the current user
  */
 Cypress.Commands.add('supabaseSignOut', () => {
-  cy.logStep('Signing out user', { message: '🚪 Signing out user' })
+  cy.pushBuffer();
+  cy.pushToLog('supabaseSignOut');
 
   return cy.wrap(
     supabase.auth.signOut()
   ).then(({ error }) => {
     if (error) {
-      cy.logStep('Error signing out', { isError: true, message: '❌ Error signing out', error })
-      throw error
+      cy.pushToLog(`error: ${error.message}`);
+      cy.popBuffer();
+      throw error;
     }
-    cy.logStep('Signed out', { message: '✅ Sign out successful', complete: true })
-  })
-})
+
+    cy.pushToLog('success');
+    cy.popBuffer();
+  });
+});
 
 // ===================================
 // Ticket Management Commands
@@ -397,92 +433,106 @@ Cypress.Commands.add('supabaseSignOut', () => {
  * Removes all test tickets from the database
  */
 Cypress.Commands.add('cleanupTestTickets', () => {
-  cy.logStep('Starting cleanup of test tickets', { message: '🧹 Starting cleanup of test tickets' })
+  cy.pushBuffer();
+  cy.pushToLog('cleanupTestTickets');
 
   return cy.wrap(
     supabaseAdmin
       .from('tickets')
       .delete()
-      .neq('id', 0) // Ensure we don't delete any system tickets
-  ).then(() => {
-    cy.logStep('Tickets cleanup complete', { message: '✅ Tickets cleanup complete', complete: true })
-  })
-})
+      .neq('id', 0)
+  ).then(({ error }) => {
+    if (error) {
+      cy.pushToLog(`error: ${error.message}`);
+      cy.popBuffer();
+      throw error;
+    }
+
+    cy.pushToLog('all test tickets removed');
+    cy.popBuffer();
+  });
+});
 
 /**
  * Seeds the database with test tickets
  * Validates ticket data before insertion
  */
 Cypress.Commands.add('seedTestTickets', (tickets) => {
-  cy.logStep('Starting ticket seeding', { message: '🌱 Starting ticket seeding', count: tickets.length })
+  cy.pushBuffer();
+  cy.pushToLog(`seedTestTickets: ${tickets.length} tickets`);
 
-  // Validate ticket data
-  const validateTicket = (ticket) => {
-    // Add type checking with logging
-    cy.logStep('Validating ticket', { message: '🔍 Validating ticket', title: ticket.title, customerId: ticket.customerId });
+  return cy.then(() => {
+    // Validate all tickets first
+    tickets.forEach((ticket, index) => {
+      cy.pushToLog(`validating ticket ${index + 1}/${tickets.length}`);
 
-    if (typeof ticket.customerId !== 'string') {
-      const error = `Invalid customerId type: ${typeof ticket.customerId} (${ticket.customerId})`;
-      cy.logStep('Validation Error', { isError: true, message: '❌ Validation Error', error });
-      throw new Error(error);
-    }
+      // Type checking
+      if (typeof ticket.customerId !== 'string') {
+        const error = `Invalid customerId type: ${typeof ticket.customerId}`;
+        cy.pushToLog(`validation failed: ${error}`);
+        cy.popBuffer();
+        throw new Error(error);
+      }
 
-    const requiredFields = ['title', 'description', 'customerId', 'status', 'priority']
-    const missingFields = requiredFields.filter(field => !ticket[field])
-    if (missingFields.length) {
-      const error = `Missing required fields: ${missingFields.join(', ')}`
-      cy.logStep('Validation Error', { isError: true, message: '❌ Validation Error', error });
-      throw new Error(error)
-    }
+      // Required fields check
+      const requiredFields = ['title', 'description', 'customerId', 'status', 'priority'];
+      const missing = requiredFields.filter(f => !ticket[f]);
+      if (missing.length) {
+        const error = `Missing fields: ${missing.join(', ')}`;
+        cy.pushToLog(`validation failed: ${error}`);
+        cy.popBuffer();
+        throw new Error(error);
+      }
 
-    // Validate status
-    if (!['new', 'open', 'pendingCustomer', 'pendingInternal', 'resolved', 'closed'].includes(ticket.status)) {
-      const error = `Invalid status: ${ticket.status}`
-      cy.logStep('Validation Error', { isError: true, message: '❌ Validation Error', error });
-      throw new Error(error)
-    }
+      // Status validation
+      const validStatus = ['new', 'open', 'pendingCustomer', 'pendingInternal', 'resolved', 'closed'];
+      if (!validStatus.includes(ticket.status)) {
+        const error = `Invalid status: ${ticket.status}`;
+        cy.pushToLog(`validation failed: ${error}`);
+        cy.popBuffer();
+        throw new Error(error);
+      }
 
-    // Validate priority
-    if (!['low', 'medium', 'high', 'urgent'].includes(ticket.priority)) {
-      const error = `Invalid priority: ${ticket.priority}`
-      cy.logStep('Validation Error', { isError: true, message: '❌ Validation Error', error });
-      throw new Error(error)
-    }
-  }
+      // Priority validation
+      const validPriority = ['low', 'medium', 'high', 'urgent'];
+      if (!validPriority.includes(ticket.priority)) {
+        const error = `Invalid priority: ${ticket.priority}`;
+        cy.pushToLog(`validation failed: ${error}`);
+        cy.popBuffer();
+        throw new Error(error);
+      }
+    });
 
-  // Validate all tickets first
-  tickets.forEach(validateTicket)
+    // Process tickets for database
+    const processed = tickets.map(ticket => ({
+      title: ticket.title,
+      description: ticket.description,
+      status: ticket.status.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`),
+      priority: ticket.priority,
+      customer_id: ticket.customerId,
+      assigned_to: ticket.assignedTo,
+      tags: ticket.tags || [],
+      metadata: ticket.metadata || {},
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }));
 
-  // Log ticket data for debugging
-  cy.logStep('Ticket data', { message: '📝 Ticket data', count: tickets.length, titles: tickets.map(t => t.title) });
+    cy.pushToLog(`processed ${processed.length} tickets`);
 
-  // Convert all tickets to database format
-  const processedTickets = tickets.map(ticket => ({
-    title: ticket.title,
-    description: ticket.description,
-    status: ticket.status.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`),
-    priority: ticket.priority,
-    customer_id: ticket.customerId,
-    assigned_to: ticket.assignedTo,
-    tags: ticket.tags || [],
-    metadata: ticket.metadata || {},
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  }))
-
-  // Log processed tickets
-  cy.logStep('Prepared tickets for database', { message: '📝 Prepared tickets for database', count: processedTickets.length });
-
-  // Insert tickets into database
-  return cy.wrap(
-    supabaseAdmin
-      .from('tickets')
-      .insert(processedTickets)
-  ).then(({ error }) => {
-    if (error) {
-      cy.logStep('Error seeding tickets', { isError: true, message: '❌ Error seeding tickets', error })
-      throw error
-    }
-    cy.logStep('Tickets seeded', { message: '✅ Successfully seeded tickets', complete: true })
-  })
-})
+    // Insert into database
+    return cy.wrap(
+      supabaseAdmin
+        .from('tickets')
+        .insert(processed)
+    ).then(({ error }) => {
+      if (error) {
+        cy.pushToLog(`insert failed: ${error.message}`);
+        cy.popBuffer();
+        throw error;
+      }
+      
+      cy.pushToLog(`inserted ${processed.length} tickets`);
+      cy.popBuffer();
+    });
+  });
+});
