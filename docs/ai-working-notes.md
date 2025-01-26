@@ -723,3 +723,29 @@ All test implementations are complete but require fixes:
 - Improve error messages for specific failure cases
 - Add confirmation dialog for role changes
 - Consider caching admin users list
+
+# AI Working Notes - 2025-01-26
+
+## Latest Changes
+
+### TypeScript and Code Cleanup
+- Fixed TypeScript issues in UserList component:
+  - Removed unused state variable `usersWithTickets`
+  - Fixed email property type handling with proper type assertion
+  - Improved type safety in function parameters and returns
+  - Removed unused imports and dependencies
+
+### Test Updates and Fixes
+- Cypress tests revealed several issues:
+  - Admin user management tests failing due to missing checkbox elements
+  - Service rep access tests failing with UUID parsing errors
+  - Ticket creation and details tests failing with similar UUID issues
+  - Auth tests passing successfully (6/6 tests)
+  - Need to investigate UUID handling in test setup/cleanup
+
+### Next Steps
+- Fix UUID parsing errors in Cypress tests
+- Add proper test data cleanup
+- Improve test stability with better selectors
+- Consider adding retry logic for flaky tests
+- Add more comprehensive error logging in tests

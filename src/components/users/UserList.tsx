@@ -38,7 +38,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal } from 'lucide-react';
 import clsx from 'clsx';
-import cn from 'classnames';
 
 type UserRole = Database['public']['Enums']['user_role'];
 
@@ -82,7 +81,6 @@ export function UserList(): React.ReactElement {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingAction, setPendingAction] = useState<BatchAction | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [usersWithTickets, setUsersWithTickets] = useState<Set<string>>(new Set());
   const [showTicketWarning, setShowTicketWarning] = useState(false);
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
   const [userIdsToProcess, setUserIdsToProcess] = useState<string[] | null>(null);
@@ -139,7 +137,7 @@ export function UserList(): React.ReactElement {
         return {
           id: user.id,
           fullName: user.fullName || user.displayName || user.id.split('-')[0],
-          email: user.email || '',
+          email: (user as unknown as { email?: string }).email || '',
           role: user.role as UserRole,
           createdAt: user.createdAt,
           totalTickets: tickets.length,
@@ -218,7 +216,7 @@ export function UserList(): React.ReactElement {
         logger.info('UserList: Subscription status changed', { status });
       });
 
-    return () => {
+    return (): void => {
       logger.methodEntry('UserList.cleanup');
       void subscription.unsubscribe();
       logger.methodExit('UserList.cleanup');
@@ -239,7 +237,7 @@ export function UserList(): React.ReactElement {
     }
   };
 
-  const handleRowClick = (index: number, userId: string, event: React.MouseEvent) => {
+  const handleRowClick = (index: number, userId: string, event: React.MouseEvent): void => {
     if (!isAdmin) return;
 
     if (event.shiftKey && lastSelectedIndex !== null) {
@@ -268,13 +266,13 @@ export function UserList(): React.ReactElement {
     }
   };
 
-  const handleMouseDown = (index: number) => {
+  const handleMouseDown = (index: number): void => {
     if (!isAdmin) return;
     setIsDragging(true);
     setDragStartIndex(index);
   };
 
-  const handleMouseEnter = (index: number) => {
+  const handleMouseEnter = (index: number): void => {
     if (!isAdmin || !isDragging || dragStartIndex === null) return;
 
     const start = Math.min(dragStartIndex, index);
@@ -284,7 +282,7 @@ export function UserList(): React.ReactElement {
     setSelectedUsers(new Set(userIdsToSelect));
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (): void => {
     setIsDragging(false);
     setDragStartIndex(null);
   };
@@ -292,30 +290,8 @@ export function UserList(): React.ReactElement {
   useEffect(() => {
     // Add global mouse up handler
     document.addEventListener('mouseup', handleMouseUp);
-    return () => document.removeEventListener('mouseup', handleMouseUp);
+    return (): void => document.removeEventListener('mouseup', handleMouseUp);
   }, []);
-
-  const toggleUserSelection = (userId: string): void => {
-    logger.methodEntry('UserList.toggleUserSelection', { userId });
-    const newSelection = new Set(selectedUsers);
-    if (newSelection.has(userId)) {
-      newSelection.delete(userId);
-    } else {
-      newSelection.add(userId);
-    }
-    setSelectedUsers(newSelection);
-    logger.methodExit('UserList.toggleUserSelection');
-  };
-
-  const toggleAllUsers = (): void => {
-    logger.methodEntry('UserList.toggleAllUsers');
-    if (selectedUsers.size === users.length) {
-      setSelectedUsers(new Set());
-    } else {
-      setSelectedUsers(new Set(users.map(u => u.id)));
-    }
-    logger.methodExit('UserList.toggleAllUsers');
-  };
 
   const handleBatchAction = (action: BatchAction, userIdsOverride?: string[]): void => {
     logger.methodEntry('UserList.handleBatchAction', { action, userIdsOverride });
@@ -508,10 +484,6 @@ export function UserList(): React.ReactElement {
     const count = userIdsToProcess?.length || selectedUsers.size;
     
     if (pendingAction.type === 'delete') {
-      const ticketUserCount = Array.from(userIdsToProcess || []).filter(id => usersWithTickets.has(id)).length;
-      if (ticketUserCount > 0) {
-        return `WARNING: ${ticketUserCount} of these users have open tickets. Are you sure you want to delete ${count} user${count === 1 ? '' : 's'}? This action cannot be undone.`;
-      }
       return `Are you sure you want to delete ${count} user${count === 1 ? '' : 's'}? This action cannot be undone.`;
     } else if (pendingAction.type === 'changeRole' && pendingAction.role) {
       return `Are you sure you want to change the role of ${count} user${count === 1 ? '' : 's'} to ${pendingAction.role}?`;
