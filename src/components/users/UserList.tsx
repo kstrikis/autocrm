@@ -37,6 +37,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal } from 'lucide-react';
+import clsx from 'clsx';
+import cn from 'classnames';
 
 type UserRole = Database['public']['Enums']['user_role'];
 
@@ -70,6 +72,9 @@ export function UserList(): React.ReactElement {
   const [error, setError] = useState<Error | null>(null);
   const [users, setUsers] = useState<UserWithStats[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
+  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartIndex, setDragStartIndex] = useState<number | null>(null);
   const [sortField, setSortField] = useState<SortField>('lastTicket');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [hasOpenTicketsFilter, setHasOpenTicketsFilter] = useState<'all' | 'yes' | 'no'>('all');
@@ -238,6 +243,62 @@ export function UserList(): React.ReactElement {
       setSortOrder('desc');
     }
   };
+
+  const handleRowClick = (index: number, userId: string, event: React.MouseEvent) => {
+    if (!isAdmin) return;
+
+    if (event.shiftKey && lastSelectedIndex !== null) {
+      // Shift+click: select range
+      const start = Math.min(lastSelectedIndex, index);
+      const end = Math.max(lastSelectedIndex, index);
+      const userIdsToSelect = users.slice(start, end + 1).map(u => u.id);
+      
+      setSelectedUsers(prev => {
+        const next = new Set(prev);
+        userIdsToSelect.forEach(id => next.add(id));
+        return next;
+      });
+    } else {
+      // Normal click: toggle selection
+      setSelectedUsers(prev => {
+        const next = new Set(prev);
+        if (next.has(userId)) {
+          next.delete(userId);
+        } else {
+          next.add(userId);
+        }
+        return next;
+      });
+      setLastSelectedIndex(index);
+    }
+  };
+
+  const handleMouseDown = (index: number) => {
+    if (!isAdmin) return;
+    setIsDragging(true);
+    setDragStartIndex(index);
+  };
+
+  const handleMouseEnter = (index: number) => {
+    if (!isAdmin || !isDragging || dragStartIndex === null) return;
+
+    const start = Math.min(dragStartIndex, index);
+    const end = Math.max(dragStartIndex, index);
+    const userIdsToSelect = users.slice(start, end + 1).map(u => u.id);
+    
+    setSelectedUsers(new Set(userIdsToSelect));
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    setDragStartIndex(null);
+  };
+
+  useEffect(() => {
+    // Add global mouse up handler
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => document.removeEventListener('mouseup', handleMouseUp);
+  }, []);
 
   const toggleUserSelection = (userId: string): void => {
     logger.methodEntry('UserList.toggleUserSelection', { userId });
@@ -614,8 +675,19 @@ export function UserList(): React.ReactElement {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {users.map((user) => (
-            <TableRow key={user.id} data-testid="user-item">
+          {users.map((user, index) => (
+            <TableRow 
+              key={user.id} 
+              data-testid="user-item"
+              className={clsx(
+                'group transition-colors hover:bg-slate-100 dark:hover:bg-slate-800',
+                selectedUsers.has(user.id) && 'bg-slate-50 dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-700',
+                isAdmin && 'cursor-default select-none'
+              )}
+              onClick={(e) => handleRowClick(index, user.id, e)}
+              onMouseDown={() => handleMouseDown(index)}
+              onMouseEnter={() => handleMouseEnter(index)}
+            >
               {isAdmin && (
                 <TableCell>
                   <input
