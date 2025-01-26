@@ -8,7 +8,7 @@
  * - Test data setup/cleanup
  */
 
-let logBuffer = [];
+let bufferStack = [[]]; // Stack of buffers, current buffer is always the last one
 let currentTestNumber = 0; // Start at 0 so first test is 1
 let currentStep = 0;
 let isInTest = false; // Track if we're in a test or lifecycle hook
@@ -44,28 +44,75 @@ const formatLogMessage = (stepCode, message, options = {}) => {
 };
 
 /**
- * Structured logging task that buffers messages and outputs them in CSV format
+ * Creates a new buffer for nested operations
+ */
+Cypress.Commands.add('pushBuffer', () => {
+  bufferStack.push([]);
+  return undefined;
+});
+
+/**
+ * Pops the current buffer, optionally flushing it
+ */
+Cypress.Commands.add('popBuffer', (shouldFlush = true) => {
+  if (bufferStack.length <= 1) {
+    throw new Error('Cannot pop the root buffer');
+  }
+  const buffer = bufferStack.pop();
+  if (shouldFlush && buffer.length > 0) {
+    cy.task('log', { message: buffer.join(' ') });
+  }
+  return undefined;
+});
+
+/**
+ * Gets the current active buffer
+ */
+const getCurrentBuffer = () => {
+  return bufferStack[bufferStack.length - 1];
+};
+
+/**
+ * Directly pushes a message to the current buffer without incrementing step counter
+ */
+Cypress.Commands.add('pushToLog', (message) => {
+  const stepCode = formatStepCode(currentTestNumber, currentStep, isInTest);
+  getCurrentBuffer().push(`... ${message}`);
+});
+
+/**
+ * Flushes the current buffer to console
+ */
+Cypress.Commands.add('flushLogBuffer', (options = {}) => {
+  const buffer = getCurrentBuffer();
+  if (buffer.length > 0) {
+    cy.task('log', { 
+      message: options.withHeader ? 
+        '\n=== Test Execution Path ===\n' + buffer.join(' ') :
+        buffer.join(' ')
+    });
+    buffer.length = 0; // Clear current buffer
+  }
+});
+
+/**
+ * Structured logging task that outputs messages immediately with newlines
  * Format: T-SS where T is the test number and SS is the step number
  */
 Cypress.Commands.add('logStep', (message, options = {}) => {
   const stepCode = formatStepCode(currentTestNumber, currentStep, isInTest && !options.isLifecycle);
-  logBuffer.push(formatLogMessage(stepCode, message, options));
+  const formattedMessage = formatLogMessage(stepCode, message, options);
+  
+  // Print immediately with newline
+  cy.task('log', { message: formattedMessage });
   
   if (options.isError) {
-    // Immediately flush buffer on error
-    cy.task('log', { 
-      message: '\n=== Test Execution Path ===\n' + logBuffer.join('\n')
-    });
-    logBuffer = [];
+    cy.flushLogBuffer({ withHeader: true });
     throw new Error(`Failed at step ${formatStepCode(currentTestNumber, currentStep, false)}: ${message}`);
   }
   
   if (options.complete) {
-    // Flush buffer on completion
-    cy.task('log', { 
-      message: '\n=== Test Execution Path ===\n' + logBuffer.join('\n')
-    });
-    logBuffer = [];
+    cy.flushLogBuffer({ withHeader: true });
   }
   
   currentStep++;
@@ -255,41 +302,41 @@ Cypress.Commands.add('queryAllUsers', () => {
  * Removes a test user and their associated data
  */
 Cypress.Commands.add('cleanupTestUser', (email) => {
-  cy.logStep('Starting cleanup of test user', { message: '🧹 Starting cleanup of test user', email })
+  cy.pushBuffer();
+  cy.pushToLog(`cleanupTestUser: ${email}`);
 
-  return cy.wrap(
+  cy.wrap(
     supabaseAdmin.auth.admin.listUsers()
   ).then(({ data: { users }, error: listError }) => {
     if (listError) {
-      cy.logStep('Error listing users', { isError: true, message: '❌ Error listing users', error: listError })
-      throw listError
+      cy.pushToLog(`error listing users`);
+      cy.popBuffer();
+      throw listError;
     }
 
-    const user = users.find(u => u.email === email)
+    const user = users.find(u => u.email === email);
     if (!user) {
-      cy.logStep('User not found during cleanup', { message: '💡 User not found during cleanup', email })
-      return
+      cy.pushToLog(`not found`);
+      cy.popBuffer();
+      return;
     }
 
     // Delete the user profile first
-    return cy.wrap(
+    cy.wrap(
       supabaseAdmin
         .from('user_profiles')
         .delete()
         .eq('id', user.id)
     ).then(() => {
-      cy.logStep('User profile deleted', { message: '✅ User profile deleted', email })
-
       // Then delete the auth user
-      return cy.wrap(
+      cy.wrap(
         supabaseAdmin.auth.admin.deleteUser(user.id)
       ).then(() => {
-        cy.logStep('Auth user deleted', { message: '✅ Auth user deleted', email })
-      })
-    })
-
-    cy.logStep('User cleanup complete', { message: '✅ User cleanup complete', email, complete: true })
-  })
+        cy.pushToLog(`deleted`);
+        cy.popBuffer();
+      });
+    });
+  });
 })
 
 // ===================================

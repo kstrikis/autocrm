@@ -8,16 +8,17 @@ describe('Admin User Management', () => {
 
   beforeEach(() => {
     cy.startLifecycleSegment('Setup', true)
-    cy.logStep('Starting test setup')
+    cy.pushToLog('Starting test setup')
     cy.clearCookies()
     cy.clearLocalStorage()
     cy.cleanupTestUser(TEST_USER_EMAIL)
     cy.supabaseSignIn(TEST_ADMIN_EMAIL, { password: TEST_ADMIN_PASSWORD })
     cy.visit('/users')
-    cy.logStep('Waiting for users table')
+    cy.pushToLog('Waiting for users table')
     cy.get('table').should('be.visible')
     cy.get('table tbody tr').should('exist')
-    cy.logStep('Test setup complete', { complete: true })
+    cy.pushToLog('Test setup complete')
+    cy.flushLogBuffer()
   })
 
   afterEach(() => {
