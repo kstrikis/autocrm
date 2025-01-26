@@ -30,6 +30,13 @@ import type { UserProfile, Ticket } from '@/lib/database.types';
 import type { Database } from '@/lib/database.types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { MoreHorizontal } from 'lucide-react';
 
 type UserRole = Database['public']['Enums']['user_role'];
 
@@ -38,6 +45,7 @@ const ITEMS_PER_PAGE = 10;
 interface UserWithStats {
   id: string;
   fullName: string;
+  email: string;
   totalTickets: number;
   openTickets: number;
   lastTicketDate: string | null;
@@ -45,7 +53,7 @@ interface UserWithStats {
   createdAt: string;
 }
 
-type SortField = 'name' | 'openTickets' | 'totalTickets' | 'lastTicket' | 'joined' | 'role';
+type SortField = 'name' | 'email' | 'openTickets' | 'totalTickets' | 'lastTicket' | 'joined' | 'role';
 type SortOrder = 'asc' | 'desc';
 type RoleFilter = 'all' | UserRole;
 type BatchAction = {
@@ -71,6 +79,14 @@ export function UserList(): React.ReactElement {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [usersWithTickets, setUsersWithTickets] = useState<Set<string>>(new Set());
   const [showTicketWarning, setShowTicketWarning] = useState(false);
+  const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
+  const isAdmin = user?.user_metadata?.role === 'admin';
+
+  logger.info('UserList: User role check', { 
+    isAdmin,
+    userMetadata: user?.user_metadata,
+    userRole: user?.user_metadata?.role
+  });
 
   const fetchUsers = async (): Promise<void> => {
     try {
@@ -79,12 +95,18 @@ export function UserList(): React.ReactElement {
 
       // First get all user profiles with their ticket counts
       let query = supabase
-        .from('user_profiles')
+        .from('user_profiles_with_email')
         .select(`
           id,
           fullName:full_name,
+          displayName:display_name,
+          avatarUrl:avatar_url,
           role,
+          status,
+          lastSeenAt:last_seen_at,
           createdAt:created_at,
+          updatedAt:updated_at,
+          email,
           tickets!left!tickets_customer_id_fkey (
             id,
             status,
@@ -117,6 +139,7 @@ export function UserList(): React.ReactElement {
         return {
           id: user.id,
           fullName: user.fullName || user.displayName || user.id.split('-')[0],
+          email: user.email || '',
           role: user.role as UserRole,
           createdAt: user.createdAt,
           totalTickets: tickets.length,
@@ -139,6 +162,9 @@ export function UserList(): React.ReactElement {
         switch (sortField) {
           case 'name':
             comparison = a.fullName.localeCompare(b.fullName);
+            break;
+          case 'email':
+            comparison = a.email.localeCompare(b.email);
             break;
           case 'openTickets':
             comparison = a.openTickets - b.openTickets;
@@ -181,10 +207,10 @@ export function UserList(): React.ReactElement {
         {
           event: '*',
           schema: 'public',
-          table: 'user_profiles'
+          table: 'user_profiles_with_email'
         },
         () => {
-          logger.info('UserList: Received realtime update for user_profiles');
+          logger.info('UserList: Received realtime update for user_profiles_with_email');
           void fetchUsers();
         }
       )
@@ -501,7 +527,7 @@ export function UserList(): React.ReactElement {
           </Select>
         </div>
 
-        {selectedUsers.size > 0 && (
+        {selectedUsers.size > 0 && isAdmin && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-500">
               {selectedUsers.size} user{selectedUsers.size === 1 ? '' : 's'} selected
@@ -532,19 +558,27 @@ export function UserList(): React.ReactElement {
       <Table data-testid="user-list">
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[50px]">
-              <input
-                type="checkbox"
-                checked={selectedUsers.size === users.length && users.length > 0}
-                onChange={toggleAllUsers}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-            </TableHead>
+            {isAdmin && (
+              <TableHead className="w-[50px]">
+                <input
+                  type="checkbox"
+                  checked={selectedUsers.size === users.length && users.length > 0}
+                  onChange={toggleAllUsers}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+              </TableHead>
+            )}
             <TableHead 
               className="cursor-pointer"
               onClick={() => handleSort('name')}
             >
               Name {sortField === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
+            </TableHead>
+            <TableHead 
+              className="cursor-pointer"
+              onClick={() => handleSort('email')}
+            >
+              Email {sortField === 'email' && (sortOrder === 'asc' ? '↑' : '↓')}
             </TableHead>
             <TableHead 
               className="cursor-pointer"
@@ -576,20 +610,24 @@ export function UserList(): React.ReactElement {
             >
               Joined {sortField === 'joined' && (sortOrder === 'asc' ? '↑' : '↓')}
             </TableHead>
+            {isAdmin && <TableHead>Actions</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
           {users.map((user) => (
             <TableRow key={user.id} data-testid="user-item">
-              <TableCell>
-                <input
-                  type="checkbox"
-                  checked={selectedUsers.has(user.id)}
-                  onChange={() => toggleUserSelection(user.id)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-              </TableCell>
+              {isAdmin && (
+                <TableCell>
+                  <input
+                    type="checkbox"
+                    checked={selectedUsers.has(user.id)}
+                    onChange={() => toggleUserSelection(user.id)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </TableCell>
+              )}
               <TableCell>{user.fullName}</TableCell>
+              <TableCell>{user.email}</TableCell>
               <TableCell>
                 <Badge
                   variant={
@@ -625,6 +663,52 @@ export function UserList(): React.ReactElement {
                 }
               </TableCell>
               <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+              {isAdmin && (
+                <TableCell>
+                  <DropdownMenu 
+                    open={openDropdowns.has(user.id)}
+                    onOpenChange={(open) => {
+                      setOpenDropdowns(prev => {
+                        const next = new Set(prev);
+                        if (open) {
+                          next.add(user.id);
+                        } else {
+                          next.delete(user.id);
+                        }
+                        return next;
+                      });
+                    }}
+                  >
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="h-8 w-8 p-0">
+                        <span className="sr-only">Open menu</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setOpenDropdowns(new Set());
+                          setSelectedUsers(new Set([user.id]));
+                          handleBatchRoleChange(user.role === 'customer' ? 'service_rep' : 'customer');
+                        }}
+                      >
+                        {user.role === 'customer' ? 'Make Service Rep' : 'Make Customer'}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-red-600"
+                        onClick={() => {
+                          setOpenDropdowns(new Set());
+                          setSelectedUsers(new Set([user.id]));
+                          handleBatchDelete();
+                        }}
+                      >
+                        Delete User
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>
