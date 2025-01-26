@@ -85,13 +85,8 @@ export function UserList(): React.ReactElement {
   const [usersWithTickets, setUsersWithTickets] = useState<Set<string>>(new Set());
   const [showTicketWarning, setShowTicketWarning] = useState(false);
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
+  const [userIdsToProcess, setUserIdsToProcess] = useState<string[] | null>(null);
   const isAdmin = user?.user_metadata?.role === 'admin';
-
-  logger.info('UserList: User role check', { 
-    isAdmin,
-    userMetadata: user?.user_metadata,
-    userRole: user?.user_metadata?.role
-  });
 
   const fetchUsers = async (): Promise<void> => {
     try {
@@ -322,62 +317,35 @@ export function UserList(): React.ReactElement {
     logger.methodExit('UserList.toggleAllUsers');
   };
 
-  const handleBatchRoleChange = (newRole: UserRole): void => {
-    logger.methodEntry('UserList.handleBatchRoleChange', { newRole, selectedUsers: Array.from(selectedUsers) });
+  const handleBatchAction = (action: BatchAction, userIdsOverride?: string[]): void => {
+    logger.methodEntry('UserList.handleBatchAction', { action, userIdsOverride });
     setErrorMessage(null); // Clear any previous errors
-    setPendingAction({ type: 'changeRole', role: newRole });
+    setPendingAction(action);
     setShowConfirmDialog(true);
-    logger.methodExit('UserList.handleBatchRoleChange');
+    setUserIdsToProcess(userIdsOverride || Array.from(selectedUsers));
+    logger.methodExit('UserList.handleBatchAction');
   };
 
-  const handleBatchDelete = async (): Promise<void> => {
+  const handleBatchDelete = (): void => {
     logger.methodEntry('UserList.handleBatchDelete');
-    
-    try {
-      // Check for users with tickets
-      const userIds = Array.from(selectedUsers);
-      const { data: customerTickets, error: customerTicketsError } = await supabase
-        .from('tickets')
-        .select('customer_id')
-        .in('customer_id', userIds);
+    handleBatchAction({ type: 'delete' });
+    logger.methodExit('UserList.handleBatchDelete');
+  };
 
-      const { data: assignedTickets, error: assignedTicketsError } = await supabase
-        .from('tickets')
-        .select('assigned_to')
-        .in('assigned_to', userIds);
-
-      if (customerTicketsError || assignedTicketsError) {
-        logger.error('UserList: Error checking tickets', { customerTicketsError, assignedTicketsError });
-        throw new Error('Failed to check user tickets');
-      }
-
-      const ticketUsers = new Set([
-        ...(customerTickets?.map(t => t.customer_id) || []),
-        ...(assignedTickets?.map(t => t.assigned_to).filter(Boolean) || [])
-      ]);
-
-      if (ticketUsers.size > 0) {
-        setUsersWithTickets(ticketUsers);
-        setShowTicketWarning(true);
-      } else {
-        setPendingAction({ type: 'delete' });
-        setShowConfirmDialog(true);
-      }
-    } catch (error) {
-      logger.error('UserList: Error in handleBatchDelete', { error });
-      setErrorMessage(error instanceof Error ? error.message : 'An error occurred');
-    }
+  const handleBatchRoleChange = (role: UserRole): void => {
+    logger.methodEntry('UserList.handleBatchRoleChange', { role });
+    handleBatchAction({ type: 'changeRole', role });
+    logger.methodExit('UserList.handleBatchRoleChange');
   };
 
   const handleTicketWarningConfirm = (): void => {
     setShowTicketWarning(false);
-    setPendingAction({ type: 'delete' });
-    setShowConfirmDialog(true);
+    handleBatchAction({ type: 'delete' });
   };
 
   const executeBatchAction = async (): Promise<void> => {
     logger.methodEntry('UserList.executeBatchAction');
-    const userIds = Array.from(selectedUsers);
+    const userIds = userIdsToProcess || Array.from(selectedUsers);
     
     if (!pendingAction) {
       logger.error('UserList: No pending action');
@@ -442,7 +410,7 @@ export function UserList(): React.ReactElement {
           throw error;
         }
       } else if (pendingAction.type === 'changeRole' && pendingAction.role) {
-        logger.info('UserList: Updating user role', { userId: userIds[0], newRole: pendingAction.role });
+        logger.info('UserList: Updating user roles', { userIds, newRole: pendingAction.role });
           
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.access_token) {
@@ -450,56 +418,56 @@ export function UserList(): React.ReactElement {
           throw new Error('No access token available');
         }
 
-        const { data: response, error: functionError } = await supabase.functions.invoke('update-user-role', {
-          body: { 
-            userId: userIds[0],
-            role: pendingAction.role
-          },
-          headers: {
-            Authorization: `Bearer ${session.access_token}`
+        // Update each user's role
+        const updatePromises = userIds.map(async (userId) => {
+          const { data: response, error: functionError } = await supabase.functions.invoke('update-user-role', {
+            body: { 
+              userId,
+              role: pendingAction.role
+            },
+            headers: {
+              Authorization: `Bearer ${session.access_token}`
+            }
+          });
+
+          if (functionError) {
+            logger.error('UserList: Edge function error', { error: functionError, userId });
+            throw new Error(`Edge function error: ${functionError.message}`);
           }
+
+          // Edge functions can return application errors in the response
+          if (response?.error) {
+            logger.error('UserList: Application error from edge function', { error: response.error, userId });
+            throw new Error(response.error);
+          }
+
+          if (!response?.data) {
+            logger.error('UserList: No data returned from update', { response, userId });
+            throw new Error('No data returned from update');
+          }
+
+          logger.info('UserList: Successfully updated user role', { 
+            userId,
+            requestedRole: pendingAction.role,
+            actualRole: response.data.role
+          });
         });
 
-        if (functionError) {
-          logger.error('UserList: Edge function error', { error: functionError });
+        try {
+          await Promise.all(updatePromises);
+          toast({
+            title: "Roles Updated",
+            description: `Successfully updated ${userIds.length} user${userIds.length === 1 ? '' : 's'} to ${pendingAction.role}`,
+          });
+        } catch (error) {
+          logger.error('UserList: Error in batch role update', { error });
           toast({
             variant: "destructive",
             title: "Error",
-            description: `Failed to update role: ${functionError.message}`,
+            description: error instanceof Error ? error.message : "Failed to update user roles",
           });
-          throw new Error(`Edge function error: ${functionError.message}`);
+          throw error;
         }
-
-        // Edge functions can return application errors in the response
-        if (response?.error) {
-          logger.error('UserList: Application error from edge function', { error: response.error });
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: response.error,
-          });
-          throw new Error(response.error);
-        }
-
-        if (!response?.data) {
-          logger.error('UserList: No data returned from update', { response });
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "No response from server",
-          });
-          throw new Error('No data returned from update');
-        }
-
-        logger.info('UserList: Successfully updated user role', { 
-          userId: userIds[0],
-          requestedRole: pendingAction.role,
-          actualRole: response.data.role
-        });
-        toast({
-          title: "Role Updated",
-          description: `Successfully updated user role to ${pendingAction.role}`,
-        });
       }
 
       // Refresh the user list
@@ -528,12 +496,19 @@ export function UserList(): React.ReactElement {
     logger.methodExit('UserList.executeBatchAction');
   };
 
+  const handleSingleUserAction = (userId: string, action: BatchAction): void => {
+    logger.methodEntry('UserList.handleSingleUserAction', { userId, action });
+    setOpenDropdowns(new Set());
+    handleBatchAction(action, [userId]);
+    logger.methodExit('UserList.handleSingleUserAction');
+  };
+
   const getConfirmationMessage = (): string => {
     if (!pendingAction) return '';
-    const count = selectedUsers.size;
+    const count = userIdsToProcess?.length || selectedUsers.size;
     
     if (pendingAction.type === 'delete') {
-      const ticketUserCount = Array.from(selectedUsers).filter(id => usersWithTickets.has(id)).length;
+      const ticketUserCount = Array.from(userIdsToProcess || []).filter(id => usersWithTickets.has(id)).length;
       if (ticketUserCount > 0) {
         return `WARNING: ${ticketUserCount} of these users have open tickets. Are you sure you want to delete ${count} user${count === 1 ? '' : 's'}? This action cannot be undone.`;
       }
@@ -759,21 +734,16 @@ export function UserList(): React.ReactElement {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
-                        onClick={() => {
-                          setOpenDropdowns(new Set());
-                          setSelectedUsers(new Set([user.id]));
-                          handleBatchRoleChange(user.role === 'customer' ? 'service_rep' : 'customer');
-                        }}
+                        onClick={() => handleSingleUserAction(user.id, { 
+                          type: 'changeRole', 
+                          role: user.role === 'customer' ? 'service_rep' : 'customer' 
+                        })}
                       >
                         {user.role === 'customer' ? 'Make Service Rep' : 'Make Customer'}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-red-600"
-                        onClick={() => {
-                          setOpenDropdowns(new Set());
-                          setSelectedUsers(new Set([user.id]));
-                          handleBatchDelete();
-                        }}
+                        onClick={() => handleSingleUserAction(user.id, { type: 'delete' })}
                       >
                         Delete User
                       </DropdownMenuItem>
