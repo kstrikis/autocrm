@@ -474,13 +474,13 @@ export function UserList(): React.ReactElement {
             <Select
               onValueChange={(value: UserRole) => handleBatchRoleChange(value as UserRole)}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px]" data-testid="role-change-trigger">
                 <SelectValue placeholder="Change role to..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="customer">Customer</SelectItem>
-                <SelectItem value="service_rep">Service Rep</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="customer" data-testid="role-option-customer">Customer</SelectItem>
+                <SelectItem value="service_rep" data-testid="role-option-service-rep">Service Rep</SelectItem>
+                <SelectItem value="admin" data-testid="role-option-admin">Admin</SelectItem>
               </SelectContent>
             </Select>
             <Button
@@ -639,7 +639,7 @@ export function UserList(): React.ReactElement {
       </Dialog>
 
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent className="sm:max-w-[425px]" hideCloseButton>
+        <DialogContent className="sm:max-w-[425px]" hideCloseButton data-testid="confirm-dialog">
           <DialogHeader>
             <DialogTitle>Confirm Action</DialogTitle>
             <DialogDescription>
@@ -660,6 +660,7 @@ export function UserList(): React.ReactElement {
                 setErrorMessage(null);
               }}
               disabled={loading}
+              data-testid="confirm-dialog-cancel"
             >
               Cancel
             </Button>
@@ -673,6 +674,7 @@ export function UserList(): React.ReactElement {
                 });
               }}
               disabled={loading}
+              data-testid="confirm-dialog-confirm"
             >
               {loading ? 'Processing...' : 'Confirm'}
             </Button>
