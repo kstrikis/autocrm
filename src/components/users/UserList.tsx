@@ -29,6 +29,7 @@ import { supabase } from '@/lib/supabase';
 import type { UserProfile, Ticket } from '@/lib/database.types';
 import type { Database } from '@/lib/database.types';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from "@/hooks/use-toast";
 
 type UserRole = Database['public']['Enums']['user_role'];
 
@@ -55,6 +56,7 @@ type BatchAction = {
 export function UserList(): React.ReactElement {
   logger.methodEntry('UserList');
   const { user } = useAuth();
+  const { toast } = useToast();
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -339,8 +341,17 @@ export function UserList(): React.ReactElement {
         try {
           await Promise.all(deletePromises);
           logger.info('UserList: Successfully deleted all users', { count: userIds.length });
+          toast({
+            title: "Users Deleted",
+            description: `Successfully deleted ${userIds.length} user${userIds.length === 1 ? '' : 's'}`,
+          });
         } catch (error) {
           logger.error('UserList: Error in batch deletion', { error });
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: error instanceof Error ? error.message : "Failed to delete users",
+          });
           throw error;
         }
       } else if (pendingAction.type === 'changeRole' && pendingAction.role) {
@@ -364,17 +375,32 @@ export function UserList(): React.ReactElement {
 
         if (functionError) {
           logger.error('UserList: Edge function error', { error: functionError });
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: `Failed to update role: ${functionError.message}`,
+          });
           throw new Error(`Edge function error: ${functionError.message}`);
         }
 
         // Edge functions can return application errors in the response
         if (response?.error) {
           logger.error('UserList: Application error from edge function', { error: response.error });
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: response.error,
+          });
           throw new Error(response.error);
         }
 
         if (!response?.data) {
           logger.error('UserList: No data returned from update', { response });
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "No response from server",
+          });
           throw new Error('No data returned from update');
         }
 
@@ -382,6 +408,10 @@ export function UserList(): React.ReactElement {
           userId: userIds[0],
           requestedRole: pendingAction.role,
           actualRole: response.data.role
+        });
+        toast({
+          title: "Role Updated",
+          description: `Successfully updated user role to ${pendingAction.role}`,
         });
       }
 
@@ -396,6 +426,11 @@ export function UserList(): React.ReactElement {
         selectedUsers: Array.from(selectedUsers),
         errorDetails: error instanceof Error ? error.message : 'Unknown error',
         userId: user.id
+      });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
       });
       throw error;
     } finally {

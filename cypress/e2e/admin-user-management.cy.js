@@ -77,13 +77,14 @@ describe('Admin User Management', () => {
     cy.get('[data-testid="confirm-dialog-confirm"]').should('be.visible').click()
 
     cy.logStep('Verifying success message')
-    cy.contains('User role updated').should('be.visible')
+    cy.contains('Role Updated').should('be.visible')
+    cy.contains('Successfully updated user role to service_rep').should('be.visible')
 
     cy.logStep('Verifying role update in table')
     cy.get('table').contains('tr', TEST_USER_NAME).within(() => {
-      cy.contains('Service Representative').should('be.visible')
+      cy.contains('service_rep').should('be.visible')
     })
-    cy.logStep('Test complete')
+    cy.logStep('Test complete', { complete: true })
     cy.flushLogBuffer()
   })
 
@@ -162,12 +163,13 @@ describe('Admin User Management', () => {
     cy.get('[data-testid="confirm-dialog-confirm"]').should('be.visible').click()
 
     cy.logStep('Verifying success message')
-    cy.contains('Users updated').should('be.visible')
+    cy.contains('Role Updated').should('be.visible')
+    cy.contains('Successfully updated user role to service_rep').should('be.visible')
 
     cy.logStep('Verifying role updates in table')
     cy.wrap(testUsers).each((user) => {
       cy.get('table').contains('tr', user.name).within(() => {
-        cy.contains('Service Representative').should('be.visible')
+        cy.contains('service_rep').should('be.visible')
       })
     })
 
