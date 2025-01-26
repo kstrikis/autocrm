@@ -530,7 +530,7 @@ export function UserList(): React.ReactElement {
   }
 
   const result = (
-    <div className="space-y-4">
+    <div className="space-y-4 mx-2">
       <div className="flex justify-between items-center">
         <div className="flex gap-4">
           <Select
@@ -591,170 +591,159 @@ export function UserList(): React.ReactElement {
         )}
       </div>
 
-      <Table data-testid="user-list">
-        <TableHeader>
-          <TableRow>
-            {isAdmin && (
-              <TableHead className="w-[50px]">
-                <input
-                  type="checkbox"
-                  checked={selectedUsers.size === users.length && users.length > 0}
-                  onChange={toggleAllUsers}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-              </TableHead>
-            )}
-            <TableHead 
-              className="cursor-pointer"
-              onClick={() => handleSort('name')}
-            >
-              Name {sortField === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </TableHead>
-            <TableHead 
-              className="cursor-pointer"
-              onClick={() => handleSort('email')}
-            >
-              Email {sortField === 'email' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </TableHead>
-            <TableHead 
-              className="cursor-pointer"
-              onClick={() => handleSort('role')}
-            >
-              Role {sortField === 'role' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </TableHead>
-            <TableHead 
-              className="cursor-pointer"
-              onClick={() => handleSort('openTickets')}
-            >
-              Open Tickets {sortField === 'openTickets' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </TableHead>
-            <TableHead 
-              className="cursor-pointer"
-              onClick={() => handleSort('totalTickets')}
-            >
-              Total Tickets {sortField === 'totalTickets' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </TableHead>
-            <TableHead 
-              className="cursor-pointer"
-              onClick={() => handleSort('lastTicket')}
-            >
-              Last Ticket {sortField === 'lastTicket' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </TableHead>
-            <TableHead 
-              className="cursor-pointer"
-              onClick={() => handleSort('joined')}
-            >
-              Joined {sortField === 'joined' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </TableHead>
-            {isAdmin && <TableHead>Actions</TableHead>}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {users.map((user, index) => (
-            <TableRow 
-              key={user.id} 
-              data-testid="user-item"
-              className={clsx(
-                'group transition-colors hover:bg-slate-100 dark:hover:bg-slate-800',
-                selectedUsers.has(user.id) && 'bg-slate-50 dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-700',
-                isAdmin && 'cursor-default select-none'
-              )}
-              onClick={(e) => handleRowClick(index, user.id, e)}
-              onMouseDown={() => handleMouseDown(index)}
-              onMouseEnter={() => handleMouseEnter(index)}
-            >
-              {isAdmin && (
-                <TableCell>
-                  <input
-                    type="checkbox"
-                    checked={selectedUsers.has(user.id)}
-                    onChange={() => toggleUserSelection(user.id)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                </TableCell>
-              )}
-              <TableCell>{user.fullName}</TableCell>
-              <TableCell>{user.email}</TableCell>
-              <TableCell>
-                <Badge
-                  variant={
-                    user.role === 'admin' 
-                      ? 'destructive' 
-                      : user.role === 'service_rep' 
-                        ? 'default' 
-                        : 'secondary'
-                  }
-                  style={
-                    user.role === 'service_rep' 
-                      ? { backgroundColor: '#3b82f6', color: 'white' } 
-                      : user.role === 'customer'
-                        ? { backgroundColor: '#6b7280', color: 'white' }
-                        : undefined
-                  }
+      <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
+        <div className="p-1">
+          <Table data-testid="user-list" className="w-full border-collapse [&_td]:border-b [&_td]:border-gray-200 dark:[&_td]:border-gray-800 [&_tr:last-child]:border-0">
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead 
+                  className="cursor-pointer"
+                  onClick={() => handleSort('name')}
                 >
-                  {user.role}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                {user.openTickets > 0 ? (
-                  <Badge className="bg-orange-500">{user.openTickets}</Badge>
-                ) : (
-                  <span>0</span>
-                )}
-              </TableCell>
-              <TableCell>{user.totalTickets}</TableCell>
-              <TableCell>
-                {user.lastTicketDate 
-                  ? new Date(user.lastTicketDate).toLocaleDateString()
-                  : 'Never'
-                }
-              </TableCell>
-              <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
-              {isAdmin && (
-                <TableCell>
-                  <DropdownMenu 
-                    open={openDropdowns.has(user.id)}
-                    onOpenChange={(open) => {
-                      setOpenDropdowns(prev => {
-                        const next = new Set(prev);
-                        if (open) {
-                          next.add(user.id);
-                        } else {
-                          next.delete(user.id);
-                        }
-                        return next;
-                      });
-                    }}
-                  >
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="h-8 w-8 p-0">
-                        <span className="sr-only">Open menu</span>
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => handleSingleUserAction(user.id, { 
-                          type: 'changeRole', 
-                          role: user.role === 'customer' ? 'service_rep' : 'customer' 
-                        })}
+                  Name {sortField === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer"
+                  onClick={() => handleSort('email')}
+                >
+                  Email {sortField === 'email' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer"
+                  onClick={() => handleSort('role')}
+                >
+                  Role {sortField === 'role' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer"
+                  onClick={() => handleSort('openTickets')}
+                >
+                  Open Tickets {sortField === 'openTickets' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer"
+                  onClick={() => handleSort('totalTickets')}
+                >
+                  Total Tickets {sortField === 'totalTickets' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer"
+                  onClick={() => handleSort('lastTicket')}
+                >
+                  Last Ticket {sortField === 'lastTicket' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer"
+                  onClick={() => handleSort('joined')}
+                >
+                  Joined {sortField === 'joined' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </TableHead>
+                {isAdmin && <TableHead>Actions</TableHead>}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {users.map((user, index) => (
+                <TableRow 
+                  key={user.id} 
+                  data-testid="user-item"
+                  className={clsx(
+                    'relative h-10 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50',
+                    selectedUsers.has(user.id) && [
+                      'bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/30',
+                      '[&>td]:border-y [&>td]:border-blue-500 dark:[&>td]:border-blue-400',
+                      '[&>td:first-child]:border-l [&>td:first-child]:rounded-l-md',
+                      '[&>td:last-child]:border-r [&>td:last-child]:rounded-r-md'
+                    ],
+                    isAdmin && 'cursor-pointer select-none'
+                  )}
+                  onClick={(e) => handleRowClick(index, user.id, e)}
+                  onMouseDown={() => handleMouseDown(index)}
+                  onMouseEnter={() => handleMouseEnter(index)}
+                >
+                  <TableCell className="px-3 py-2 align-middle">{user.fullName}</TableCell>
+                  <TableCell className="px-3 py-2 align-middle">{user.email}</TableCell>
+                  <TableCell className="px-3 py-2 align-middle">
+                    <Badge
+                      variant={
+                        user.role === 'admin' 
+                          ? 'destructive' 
+                          : user.role === 'service_rep' 
+                            ? 'default' 
+                            : 'secondary'
+                      }
+                      style={
+                        user.role === 'service_rep' 
+                          ? { backgroundColor: '#3b82f6', color: 'white' } 
+                          : user.role === 'customer'
+                            ? { backgroundColor: '#6b7280', color: 'white' }
+                            : undefined
+                      }
+                    >
+                      {user.role}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="px-3 py-2 align-middle">
+                    {user.openTickets > 0 ? (
+                      <Badge className="bg-orange-500">{user.openTickets}</Badge>
+                    ) : (
+                      <span>0</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="px-3 py-2 align-middle">{user.totalTickets}</TableCell>
+                  <TableCell className="px-3 py-2 align-middle">
+                    {user.lastTicketDate 
+                      ? new Date(user.lastTicketDate).toLocaleDateString()
+                      : 'Never'
+                    }
+                  </TableCell>
+                  <TableCell className="px-3 py-2 align-middle">{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                  {isAdmin && (
+                    <TableCell className="px-3 py-2 align-middle">
+                      <DropdownMenu 
+                        open={openDropdowns.has(user.id)}
+                        onOpenChange={(open) => {
+                          setOpenDropdowns(prev => {
+                            const next = new Set(prev);
+                            if (open) {
+                              next.add(user.id);
+                            } else {
+                              next.delete(user.id);
+                            }
+                            return next;
+                          });
+                        }}
                       >
-                        {user.role === 'customer' ? 'Make Service Rep' : 'Make Customer'}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-red-600"
-                        onClick={() => handleSingleUserAction(user.id, { type: 'delete' })}
-                      >
-                        Delete User
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              )}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => handleSingleUserAction(user.id, { 
+                              type: 'changeRole', 
+                              role: user.role === 'customer' ? 'service_rep' : 'customer' 
+                            })}
+                          >
+                            {user.role === 'customer' ? 'Make Service Rep' : 'Make Customer'}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={() => handleSingleUserAction(user.id, { type: 'delete' })}
+                          >
+                            Delete User
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
 
       <div className="flex justify-between items-center">
         <Button
