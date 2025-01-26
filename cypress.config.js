@@ -29,7 +29,7 @@ export default defineConfig({
           const { message: msg, ...data } = message
           
           // Get timestamp
-          const timestamp = new Date().toISOString()
+          const timestamp = (new Date().getSeconds() + (new Date().getMilliseconds() / 1000)).toFixed(3);
           
           // Print the message with emoji for better visibility
           console.log(`[${timestamp}] 🔍 ${msg}`)

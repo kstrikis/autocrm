@@ -5,7 +5,10 @@ describe('Ticket Details', () => {
     cy.cleanupTestUser('customer@example.com');
 
     cy.task('log', { message: '👤 Creating test user' });
-    cy.createTestUser('customer@example.com', 'password123').then((response) => {
+    cy.createTestUser('customer@example.com', {
+      fullName: 'Test Customer',
+      role: 'customer'
+    }).then((response) => {
       const customerId = response.data.user.id;
       cy.task('log', { message: '👤 Created test user', customerId });
       
@@ -24,7 +27,7 @@ describe('Ticket Details', () => {
     });
     
     cy.task('log', { message: '🔑 Starting user authentication' });
-    cy.supabaseSignIn('customer@example.com', 'password123');
+    cy.supabaseSignIn('customer@example.com');
     
     cy.task('log', { message: '📱 Navigating to dashboard' });
     cy.visit('/dashboard');
@@ -116,4 +119,4 @@ describe('Ticket Details', () => {
     
     cy.task('log', { message: '✅ Navigation back test completed' });
   });
-}); 
+});

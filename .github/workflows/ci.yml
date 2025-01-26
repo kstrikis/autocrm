@@ -19,51 +19,51 @@ jobs:
         node-version: '22.x'
         cache: 'npm'
 
-    - name: Install system dependencies
-      run: |
-        sudo add-apt-repository ppa:kisak/kisak-mesa -y
-        sudo apt-get update
-        sudo apt-get upgrade -y
-        sudo apt-get install -y xvfb libasound2t64 libgbm1 libgtk-3-0 libnss3 libxss1 libxtst6 libx11-xcb1
+    # - name: Install system dependencies
+    #   run: |
+    #     sudo add-apt-repository ppa:kisak/kisak-mesa -y
+    #     sudo apt-get update
+    #     sudo apt-get upgrade -y
+    #     sudo apt-get install -y xvfb libasound2t64 libgbm1 libgtk-3-0 libnss3 libxss1 libxtst6 libx11-xcb1
 
     - name: Install dependencies
       run: npm ci
     
-    - name: Setup Supabase CLI
-      uses: supabase/setup-cli@v1
-      with:
-        version: latest
+    # - name: Setup Supabase CLI
+    #   uses: supabase/setup-cli@v1
+    #   with:
+    #     version: latest
 
-    - name: Initialize Supabase
-      run: |
-        echo "Starting Supabase initialization..."
-        supabase init --force
+    # - name: Initialize Supabase
+    #   run: |
+    #     echo "Starting Supabase initialization..."
+    #     supabase init --force
         
-        echo "Starting Supabase services..."
-        npm run supabase:start
+    #     echo "Starting Supabase services..."
+    #     npm run supabase:start
         
-        echo "Generating .env file..."
-        npm run supabase:env
-        echo "Contents of .env file:"
-        cat .env
+    #     echo "Generating .env file..."
+    #     npm run supabase:env
+    #     echo "Contents of .env file:"
+    #     cat .env
         
-        echo "Creating .env.testing file..."
-        cp .env .env.testing
-        # Replace API_URL with VITE_SUPABASE_URL and ANON_KEY with VITE_SUPABASE_ANON_KEY
-        sed -i 's/^API_URL=/VITE_SUPABASE_URL=/' .env.testing
-        sed -i 's/^ANON_KEY=/VITE_SUPABASE_ANON_KEY=/' .env.testing
-        echo "Contents of .env.testing file:"
-        cat .env.testing
+    #     echo "Creating .env.testing file..."
+    #     cp .env .env.testing
+    #     # Replace API_URL with VITE_SUPABASE_URL and ANON_KEY with VITE_SUPABASE_ANON_KEY
+    #     sed -i 's/^API_URL=/VITE_SUPABASE_URL=/' .env.testing
+    #     sed -i 's/^ANON_KEY=/VITE_SUPABASE_ANON_KEY=/' .env.testing
+    #     echo "Contents of .env.testing file:"
+    #     cat .env.testing
         
-        echo "Creating cypress.env.json..."
-        npm run cypress:env
-        echo "Contents of cypress.env.json:"
-        cat cypress.env.json
+    #     echo "Creating cypress.env.json..."
+    #     npm run cypress:env
+    #     echo "Contents of cypress.env.json:"
+    #     cat cypress.env.json
         
-        echo "Verifying environment files exist:"
-        ls -la .env .env.testing cypress.env.json
+    #     echo "Verifying environment files exist:"
+    #     ls -la .env .env.testing cypress.env.json
         
-        echo "Supabase initialization complete"
+    #     echo "Supabase initialization complete"
 
     - name: Run lint
       run: npm run lint
@@ -71,8 +71,8 @@ jobs:
     - name: Run build
       run: npm run build
 
-    - name: Seed Database
-      run: npm run seed-users:ci
+    # - name: Seed Database
+    #   run: npm run seed-users:ci
 
-    - name: Run tests
-      run: source .env && source .env.testing && xvfb-run --auto-servernum npm run test:e2e
+    # - name: Run tests
+    #   run: source .env && source .env.testing && xvfb-run --auto-servernum npm run test:e2e

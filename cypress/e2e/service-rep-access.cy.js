@@ -3,18 +3,26 @@ describe('Service Rep Access', () => {
     // Start with a clean slate - both tickets and users
     cy.task('log', { message: '🧹 Cleaning up test data' });
     cy.cleanupTestTickets();
-    cy.cleanupTestUsers();
+    
+    // Clean up specific test users
+    cy.cleanupTestUser('test-customer1@example.com');
+    cy.cleanupTestUser('test-customer2@example.com');
 
     // Create users and store their IDs properly
     cy.task('log', { message: '👥 Creating test users' });
     
-    cy.createTestUser('test-customer1@example.com', 'StrongP@ssw0rd1')
-    .then((userId) => {
-      cy.wrap(userId).as('customer1');
-      return cy.createTestUser('test-customer2@example.com', 'StrongP@ssw0rd2');
+    // Create first customer - using explicit options
+    cy.createTestUser('test-customer1@example.com', {
+      fullName: 'Test Customer 1',
+      role: 'customer'
     })
-    .then((userId) => {
-      cy.wrap(userId).as('customer2');
+    .then((response) => {
+      cy.wrap(response).as('customer1');
+      // Create second customer - using defaults
+      return cy.createTestUser('test-customer2@example.com');
+    })
+    .then((response) => {
+      cy.wrap(response).as('customer2');
     });
     
     // Seed tickets after both users are created
@@ -72,7 +80,8 @@ describe('Service Rep Access', () => {
   afterEach(() => {
     cy.task('log', { message: '🧹 Cleaning up test data' });
     cy.cleanupTestTickets();
-    cy.cleanupTestUsers();
+    cy.cleanupTestUser('test-customer1@example.com');
+    cy.cleanupTestUser('test-customer2@example.com');
   });
 
   it('service rep should see all tickets and users', () => {
@@ -107,4 +116,4 @@ describe('Service Rep Access', () => {
       .find('[data-testid="user-item"]')
       .should('have.length', 5);
   });
-}); 
+});

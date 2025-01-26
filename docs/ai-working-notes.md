@@ -2,6 +2,17 @@
 
 ## Latest Changes (2024-01-24)
 
+### Seed Script and Form Improvements
+- Fixed seed script environment variable issues:
+  - Added `source .env` to load environment variables before curl command
+  - Updated curl command syntax for better compatibility
+  - Fixed variable expansion using `${VAR}` syntax
+- Added proper autocomplete attributes to form inputs:
+  - `autoComplete="username"` for email inputs
+  - `autoComplete="name"` for full name input
+  - `autoComplete="new-password"` for password/confirm password inputs
+  - `autoComplete="off"` for search bar to prevent unwanted suggestions
+
 ### User Interface and TypeScript Improvements
 - Updated user role badges in UserList component:
   - Added distinct blue styling for service rep role
@@ -687,3 +698,54 @@ All test implementations are complete but require fixes:
 - Added system dependencies: xvfb, libasound2t64, libgbm1, libgtk-3-0, libnss3, libxss1, libxtst6, libx11-xcb1
 - Added Kisak Mesa PPA for updated graphics drivers
 - Added start-server-and-test for running Vite in test mode
+
+## Latest Changes (2025-01-25)
+
+### User Role Management Improvements
+- Migrated user role updates from Amplify to Supabase:
+  - Removed Amplify GraphQL schema and functions
+  - Created Supabase edge function for role updates
+  - Added proper JWT validation and admin role checks
+  - Improved error handling and logging
+  - Added safety check to prevent removing last admin
+- Updated UserList component:
+  - Switched from GraphQL to Supabase edge function
+  - Added proper session token handling
+  - Improved error handling and user feedback
+  - Added detailed logging for role updates
+- Fixed TypeScript issues:
+  - Added return type to AdminDashboard useEffect
+  - Improved type safety in edge function
+
+### Next Steps
+- Consider adding role update audit logging
+- Add batch role update functionality
+- Improve error messages for specific failure cases
+- Add confirmation dialog for role changes
+- Consider caching admin users list
+
+# AI Working Notes - 2025-01-26
+
+## Latest Changes
+
+### TypeScript and Code Cleanup
+- Fixed TypeScript issues in UserList component:
+  - Removed unused state variable `usersWithTickets`
+  - Fixed email property type handling with proper type assertion
+  - Improved type safety in function parameters and returns
+  - Removed unused imports and dependencies
+
+### Test Updates and Fixes
+- Cypress tests revealed several issues:
+  - Admin user management tests failing due to missing checkbox elements
+  - Service rep access tests failing with UUID parsing errors
+  - Ticket creation and details tests failing with similar UUID issues
+  - Auth tests passing successfully (6/6 tests)
+  - Need to investigate UUID handling in test setup/cleanup
+
+### Next Steps
+- Fix UUID parsing errors in Cypress tests
+- Add proper test data cleanup
+- Improve test stability with better selectors
+- Consider adding retry logic for flaky tests
+- Add more comprehensive error logging in tests

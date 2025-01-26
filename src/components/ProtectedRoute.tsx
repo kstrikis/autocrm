@@ -14,7 +14,6 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps):
   const { user, loading } = useAuth()
 
   if (loading) {
-    logger.info('ProtectedRoute: Loading user state')
     return <LoadingSpinner fullScreen size="lg" />
   }
 

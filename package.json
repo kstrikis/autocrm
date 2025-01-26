@@ -26,8 +26,8 @@
     "seed:serve:local": "supabase functions serve seed-users --env-file ./supabase/functions/seed-users/.env.local",
     "seed:serve:prod": "supabase functions serve seed-users --env-file ./supabase/functions/seed-users/.env",
     "seed:deploy": "supabase functions deploy seed-users",
-    "seed:run:local": "curl -i --location --request POST \"http://localhost:54321/functions/v1/seed-users\" --header \"Authorization: Bearer $SEED_ADMIN_TOKEN\" --header \"Content-Type: application/json\"",
-    "seed:run:prod": "curl -i --location --request POST \"$SUPABASE_URL/functions/v1/seed-users\" --header \"Authorization: Bearer $SEED_ADMIN_TOKEN\" --header \"Content-Type: application/json\"",
+    "seed:run:local": "source .env && curl -i --location --request POST \"http://localhost:54321/functions/v1/seed-users\" --header \"Authorization: Bearer ${SEED_ADMIN_TOKEN}\" --header \"Content-Type: application/json\"",
+    "seed:run:prod": "source .env && curl -i -L -X POST \"${SUPABASE_URL}/functions/v1/seed-users\" -H \"Authorization: Bearer ${SEED_ADMIN_TOKEN}\" -H \"Content-Type: application/json\"",
     "cypress:env": "tsx scripts/create-cypress-env.ts"
   },
   "dependencies": {
@@ -36,8 +36,10 @@
     "@aws-amplify/ui-react": "^6.5.5",
     "@eslint/js": "^9.18.0",
     "@hookform/resolvers": "^3.10.0",
+    "@radix-ui/react-alert-dialog": "^1.1.5",
     "@radix-ui/react-avatar": "^1.1.2",
     "@radix-ui/react-dialog": "^1.1.4",
+    "@radix-ui/react-dropdown-menu": "^2.1.5",
     "@radix-ui/react-label": "^2.1.1",
     "@radix-ui/react-progress": "^1.1.1",
     "@radix-ui/react-select": "^2.1.4",
