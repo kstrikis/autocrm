@@ -3,6 +3,102 @@
 /**
  * Cypress E2E Test Support File
  * Contains commands for:
+ * - User management
+ * - Authentication
+ * - Test data setup/cleanup
+ */
+
+let logBuffer = [];
+let currentTestNumber = 0; // Start at 0 so first test is 1
+let currentStep = 0;
+let isInTest = false; // Track if we're in a test or lifecycle hook
+
+// ANSI color codes
+const colors = {
+  reset: '\x1b[0m',
+  bright: '\x1b[1m',
+  cyan: '\x1b[36m',
+  yellow: '\x1b[33m',
+  magenta: '\x1b[35m'
+};
+
+/**
+ * Formats a step code using the test number (T) and step number (S) as T-SS
+ * e.g., test 1 step 5 = 1-05, test 12 step 3 = 12-03
+ */
+const formatStepCode = (testNum, stepNum, shouldColor) => {
+  const code = `${testNum}-${String(stepNum).padStart(2, '0')}`;
+  return shouldColor ? `${colors.bright}${colors.cyan}${code}${colors.reset}` : code;
+};
+
+/**
+ * Formats a log message with colors
+ */
+const formatLogMessage = (stepCode, message, options = {}) => {
+  if (options.isSegment) {
+    const segmentName = options.isLifecycle ? message : `${colors.magenta}${message}${colors.reset}`;
+    return `${stepCode}: Starting segment: ${segmentName}`;
+  }
+  
+  return `${stepCode}: ${message}`;
+};
+
+/**
+ * Structured logging task that buffers messages and outputs them in CSV format
+ * Format: T-SS where T is the test number and SS is the step number
+ */
+Cypress.Commands.add('logStep', (message, options = {}) => {
+  const stepCode = formatStepCode(currentTestNumber, currentStep, isInTest && !options.isLifecycle);
+  logBuffer.push(formatLogMessage(stepCode, message, options));
+  
+  if (options.isError) {
+    // Immediately flush buffer on error
+    cy.task('log', { 
+      message: '\n=== Test Execution Path ===\n' + logBuffer.join('\n')
+    });
+    logBuffer = [];
+    throw new Error(`Failed at step ${formatStepCode(currentTestNumber, currentStep, false)}: ${message}`);
+  }
+  
+  if (options.complete) {
+    // Flush buffer on completion
+    cy.task('log', { 
+      message: '\n=== Test Execution Path ===\n' + logBuffer.join('\n')
+    });
+    logBuffer = [];
+  }
+  
+  currentStep++;
+  if (currentStep > 99) {
+    currentStep = 0;
+  }
+});
+
+/**
+ * Starts a new test segment, resetting the step counter
+ */
+Cypress.Commands.add('startSegment', (segmentName) => {
+  isInTest = true;
+  currentStep = 0;
+  cy.logStep(segmentName, { isSegment: true });
+});
+
+/**
+ * Starts a new lifecycle segment (beforeEach/afterEach), resetting the step counter
+ * Increments test number for beforeEach since that's when a new test starts
+ */
+Cypress.Commands.add('startLifecycleSegment', (segmentName, isBeforeEach = false) => {
+  isInTest = false;
+  if (isBeforeEach) {
+    currentTestNumber++;
+  }
+  currentStep = 0;
+  cy.logStep(segmentName, { isSegment: true, isLifecycle: true });
+});
+
+/**
+ * Cypress E2E Test Support File
+ * Contains commands for:
  * - User Management (create, query, cleanup)
  * - Authentication (sign in, sign out)
  * - Ticket Management (seed, cleanup)
@@ -37,12 +133,7 @@ Cypress.Commands.add('createAdminManagedUser', (email, options = {}) => {
     displayName: options.displayName || options.fullName || defaults.fullName
   }
 
-  cy.task('log', { 
-    message: '🔑 Creating admin managed user', 
-    email,
-    role: config.role,
-    fullName: config.fullName
-  })
+  cy.logStep('Creating admin managed user', { message: '🔑 Creating admin managed user', email, role: config.role, fullName: config.fullName })
 
   return cy.wrap(
     supabaseAdmin.auth.admin.createUser({
@@ -58,10 +149,10 @@ Cypress.Commands.add('createAdminManagedUser', (email, options = {}) => {
     })
   ).then(({ data: { user }, error }) => {
     if (error) {
-      cy.task('log', { message: '❌ Error creating admin managed user', error })
+      cy.logStep('Error creating admin managed user', { isError: true, message: '❌ Error creating admin managed user', error })
       throw error
     }
-    cy.task('log', { message: '✅ Admin managed user created', userId: user.id, email, role: config.role })
+    cy.logStep('Admin managed user created', { message: '✅ Admin managed user created', userId: user.id, email, role: config.role })
     return cy.wrap(user)
   })
 })
@@ -89,12 +180,7 @@ Cypress.Commands.add('createTestUser', (email, options = {}) => {
     displayName: options.displayName || options.fullName || defaults.fullName
   }
 
-  cy.task('log', { 
-    message: '🔑 Creating test user', 
-    email,
-    role: config.role,
-    fullName: config.fullName
-  })
+  cy.logStep('Creating test user', { message: '🔑 Creating test user', email, role: config.role, fullName: config.fullName })
 
   return cy.wrap(
     supabase.auth.signUp({
@@ -111,15 +197,10 @@ Cypress.Commands.add('createTestUser', (email, options = {}) => {
     })
   ).then((response) => {
     if (response.error) {
-      cy.task('log', { message: '❌ Error creating test user', error: response.error })
+      cy.logStep('Error creating test user', { isError: true, message: '❌ Error creating test user', error: response.error })
       throw response.error
     }
-    cy.task('log', { 
-      message: '✅ Successfully created test user', 
-      userId: response.data?.user?.id,
-      email,
-      metadata: response.data?.user?.user_metadata
-    })
+    cy.logStep('Test user created', { message: '✅ Successfully created test user', userId: response.data?.user?.id, email, metadata: response.data?.user?.user_metadata })
     return response
   })
 })
@@ -129,13 +210,13 @@ Cypress.Commands.add('createTestUser', (email, options = {}) => {
  * Returns combined data from auth and user_profiles tables
  */
 Cypress.Commands.add('queryAllUsers', () => {
-  cy.task('log', { message: '🔍 Querying all users from database' })
-  
+  cy.logStep('Querying all users from database', { message: '🔍 Querying all users from database' })
+
   return cy.wrap(
     supabaseAdmin.auth.admin.listUsers()
   ).then(({ data: { users }, error }) => {
     if (error) {
-      cy.task('log', { message: '❌ Error querying users', error })
+      cy.logStep('Error querying users', { isError: true, message: '❌ Error querying users', error })
       throw error
     }
 
@@ -146,7 +227,7 @@ Cypress.Commands.add('queryAllUsers', () => {
         .select('*')
     ).then(({ data: profiles, error: profileError }) => {
       if (profileError) {
-        cy.task('log', { message: '❌ Error querying user profiles', error: profileError })
+        cy.logStep('Error querying user profiles', { isError: true, message: '❌ Error querying user profiles', error: profileError })
         throw profileError
       }
 
@@ -159,15 +240,11 @@ Cypress.Commands.add('queryAllUsers', () => {
         }
       })
 
-      cy.task('log', { 
-        message: '✅ Successfully retrieved all users', 
-        count: combinedUsers.length,
-        roles: combinedUsers.reduce((acc, user) => {
-          const role = user.profile.role || 'unknown'
-          acc[role] = (acc[role] || 0) + 1
-          return acc
-        }, {})
-      })
+      cy.logStep('Users retrieved', { message: '✅ Successfully retrieved all users', count: combinedUsers.length, roles: combinedUsers.reduce((acc, user) => {
+        const role = user.profile.role || 'unknown'
+        acc[role] = (acc[role] || 0) + 1
+        return acc
+      }, {}) })
 
       return combinedUsers
     })
@@ -178,19 +255,19 @@ Cypress.Commands.add('queryAllUsers', () => {
  * Removes a test user and their associated data
  */
 Cypress.Commands.add('cleanupTestUser', (email) => {
-  cy.task('log', { message: '🧹 Starting cleanup of test user', email })
-  
+  cy.logStep('Starting cleanup of test user', { message: '🧹 Starting cleanup of test user', email })
+
   return cy.wrap(
     supabaseAdmin.auth.admin.listUsers()
   ).then(({ data: { users }, error: listError }) => {
     if (listError) {
-      cy.task('log', { message: '❌ Error listing users', error: listError })
+      cy.logStep('Error listing users', { isError: true, message: '❌ Error listing users', error: listError })
       throw listError
     }
 
     const user = users.find(u => u.email === email)
     if (!user) {
-      cy.task('log', { message: '💡 User not found during cleanup', email })
+      cy.logStep('User not found during cleanup', { message: '💡 User not found during cleanup', email })
       return
     }
 
@@ -201,17 +278,17 @@ Cypress.Commands.add('cleanupTestUser', (email) => {
         .delete()
         .eq('id', user.id)
     ).then(() => {
-      cy.task('log', { message: '✅ User profile deleted', email })
+      cy.logStep('User profile deleted', { message: '✅ User profile deleted', email })
 
       // Then delete the auth user
       return cy.wrap(
         supabaseAdmin.auth.admin.deleteUser(user.id)
       ).then(() => {
-        cy.task('log', { message: '✅ Auth user deleted', email })
+        cy.logStep('Auth user deleted', { message: '✅ Auth user deleted', email })
       })
     })
 
-    cy.task('log', { message: '✅ User cleanup complete', email })
+    cy.logStep('User cleanup complete', { message: '✅ User cleanup complete', email, complete: true })
   })
 })
 
@@ -231,7 +308,8 @@ Cypress.Commands.add('supabaseSignIn', (email, options = {}) => {
     ...options
   }
 
-  cy.task('log', { message: '🔑 Signing in user', email })
+  cy.logStep('Signing in user', { message: '🔑 Signing in user', email })
+
   return cy.wrap(
     supabase.auth.signInWithPassword({
       email,
@@ -239,15 +317,10 @@ Cypress.Commands.add('supabaseSignIn', (email, options = {}) => {
     })
   ).then((response) => {
     if (response.error) {
-      cy.task('log', { message: '❌ Error signing in', error: response.error })
+      cy.logStep('Error signing in', { isError: true, message: '❌ Error signing in', error: response.error })
       throw response.error
     }
-    cy.task('log', { 
-      message: '✅ Successfully signed in', 
-      userId: response.data?.user?.id,
-      email,
-      metadata: response.data?.user?.user_metadata
-    })
+    cy.logStep('Signed in', { message: '✅ Successfully signed in', userId: response.data?.user?.id, email, metadata: response.data?.user?.user_metadata })
     return cy.wrap(response)
   })
 })
@@ -256,15 +329,16 @@ Cypress.Commands.add('supabaseSignIn', (email, options = {}) => {
  * Signs out the current user
  */
 Cypress.Commands.add('supabaseSignOut', () => {
-  cy.task('log', { message: '🚪 Signing out user' })
+  cy.logStep('Signing out user', { message: '🚪 Signing out user' })
+
   return cy.wrap(
     supabase.auth.signOut()
   ).then(({ error }) => {
     if (error) {
-      cy.task('log', { message: '❌ Error signing out', error })
+      cy.logStep('Error signing out', { isError: true, message: '❌ Error signing out', error })
       throw error
     }
-    cy.task('log', { message: '✅ Sign out successful' })
+    cy.logStep('Signed out', { message: '✅ Sign out successful', complete: true })
   })
 })
 
@@ -276,14 +350,15 @@ Cypress.Commands.add('supabaseSignOut', () => {
  * Removes all test tickets from the database
  */
 Cypress.Commands.add('cleanupTestTickets', () => {
-  cy.task('log', { message: '🧹 Starting cleanup of test tickets' })
+  cy.logStep('Starting cleanup of test tickets', { message: '🧹 Starting cleanup of test tickets' })
+
   return cy.wrap(
     supabaseAdmin
       .from('tickets')
       .delete()
       .neq('id', 0) // Ensure we don't delete any system tickets
   ).then(() => {
-    cy.task('log', { message: '✅ Tickets cleanup complete' })
+    cy.logStep('Tickets cleanup complete', { message: '✅ Tickets cleanup complete', complete: true })
   })
 })
 
@@ -292,20 +367,16 @@ Cypress.Commands.add('cleanupTestTickets', () => {
  * Validates ticket data before insertion
  */
 Cypress.Commands.add('seedTestTickets', (tickets) => {
-  cy.task('log', { message: '🌱 Starting ticket seeding', count: tickets.length })
-  
+  cy.logStep('Starting ticket seeding', { message: '🌱 Starting ticket seeding', count: tickets.length })
+
   // Validate ticket data
   const validateTicket = (ticket) => {
     // Add type checking with logging
-    cy.task('log', { 
-      message: '🔍 Validating ticket',
-      title: ticket.title,
-      customerId: ticket.customerId
-    });
-    
+    cy.logStep('Validating ticket', { message: '🔍 Validating ticket', title: ticket.title, customerId: ticket.customerId });
+
     if (typeof ticket.customerId !== 'string') {
       const error = `Invalid customerId type: ${typeof ticket.customerId} (${ticket.customerId})`;
-      cy.task('log', { message: '❌ Validation Error', error });
+      cy.logStep('Validation Error', { isError: true, message: '❌ Validation Error', error });
       throw new Error(error);
     }
 
@@ -313,21 +384,21 @@ Cypress.Commands.add('seedTestTickets', (tickets) => {
     const missingFields = requiredFields.filter(field => !ticket[field])
     if (missingFields.length) {
       const error = `Missing required fields: ${missingFields.join(', ')}`
-      cy.task('log', { message: '❌ Validation Error', error })
+      cy.logStep('Validation Error', { isError: true, message: '❌ Validation Error', error });
       throw new Error(error)
     }
 
     // Validate status
     if (!['new', 'open', 'pendingCustomer', 'pendingInternal', 'resolved', 'closed'].includes(ticket.status)) {
       const error = `Invalid status: ${ticket.status}`
-      cy.task('log', { message: '❌ Validation Error', error })
+      cy.logStep('Validation Error', { isError: true, message: '❌ Validation Error', error });
       throw new Error(error)
     }
 
     // Validate priority
     if (!['low', 'medium', 'high', 'urgent'].includes(ticket.priority)) {
       const error = `Invalid priority: ${ticket.priority}`
-      cy.task('log', { message: '❌ Validation Error', error })
+      cy.logStep('Validation Error', { isError: true, message: '❌ Validation Error', error });
       throw new Error(error)
     }
   }
@@ -336,7 +407,7 @@ Cypress.Commands.add('seedTestTickets', (tickets) => {
   tickets.forEach(validateTicket)
 
   // Log ticket data for debugging
-  cy.task('log', { message: '📝 Ticket data', count: tickets.length, titles: tickets.map(t => t.title) });
+  cy.logStep('Ticket data', { message: '📝 Ticket data', count: tickets.length, titles: tickets.map(t => t.title) });
 
   // Convert all tickets to database format
   const processedTickets = tickets.map(ticket => ({
@@ -353,7 +424,7 @@ Cypress.Commands.add('seedTestTickets', (tickets) => {
   }))
 
   // Log processed tickets
-  cy.task('log', { message: '📝 Prepared tickets for database', count: processedTickets.length });
+  cy.logStep('Prepared tickets for database', { message: '📝 Prepared tickets for database', count: processedTickets.length });
 
   // Insert tickets into database
   return cy.wrap(
@@ -362,9 +433,9 @@ Cypress.Commands.add('seedTestTickets', (tickets) => {
       .insert(processedTickets)
   ).then(({ error }) => {
     if (error) {
-      cy.task('log', { message: '❌ Error seeding tickets', error })
+      cy.logStep('Error seeding tickets', { isError: true, message: '❌ Error seeding tickets', error })
       throw error
     }
-    cy.task('log', { message: '✅ Successfully seeded tickets' })
+    cy.logStep('Tickets seeded', { message: '✅ Successfully seeded tickets', complete: true })
   })
 })
