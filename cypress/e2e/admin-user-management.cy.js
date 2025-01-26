@@ -11,7 +11,7 @@ describe('Admin User Management', () => {
     cy.clearCookies()
     cy.clearLocalStorage()
     cy.cleanupTestUser(TEST_USER_EMAIL)
-    cy.loginAsAdmin(TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD)
+    cy.supabaseSignIn(TEST_ADMIN_EMAIL, { password: TEST_ADMIN_PASSWORD })
     cy.visit('/users')
     // Wait for the table to load and be ready
     cy.task('log', { message: 'Waiting for users table to load' })
@@ -45,7 +45,10 @@ describe('Admin User Management', () => {
 
   it('should allow changing user roles', () => {
     cy.task('log', { message: 'Creating test user', email: TEST_USER_EMAIL })
-    cy.createAdminManagedUser(TEST_USER_EMAIL, TEST_USER_NAME, 'customer')
+    cy.createAdminManagedUser(TEST_USER_EMAIL, {
+      fullName: TEST_USER_NAME,
+      role: 'customer'
+    })
     
     // Wait for user creation to complete
     cy.wait(1000)
@@ -128,7 +131,10 @@ describe('Admin User Management', () => {
     cy.task('log', { message: 'Creating test users' })
     cy.wrap(testUsers).each((user) => {
       cy.task('log', { message: `Creating test user ${user.email}` })
-      cy.createAdminManagedUser(user.email, user.name, 'customer')
+      cy.createAdminManagedUser(user.email, {
+        fullName: user.name,
+        role: 'customer'
+      })
       cy.wait(1000) // Wait for user creation to complete
     })
 

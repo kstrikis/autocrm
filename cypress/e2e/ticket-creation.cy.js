@@ -2,7 +2,11 @@ describe('Ticket Creation', () => {
   beforeEach(() => {
     cy.cleanupTestTickets();
     cy.cleanupTestUser('customer@example.com');
-    cy.createTestUser('customer@example.com', 'password123').then((response) => {
+    
+    cy.createTestUser('customer@example.com', {
+      fullName: 'Test Customer',
+      role: 'customer'
+    }).then((response) => {
       const customerId = response.data.user.id;
       cy.task('log', { message: '🔍 Created test user with ID', customerId });
       
@@ -29,7 +33,7 @@ describe('Ticket Creation', () => {
     });
     
     cy.task('log', { message: '🔑 Signing in', email: 'customer@example.com' });
-    cy.supabaseSignIn('customer@example.com', 'password123');
+    cy.supabaseSignIn('customer@example.com');
     
     cy.task('log', { message: '🌐 Visiting dashboard' });
     cy.visit('/dashboard');
@@ -118,4 +122,4 @@ describe('Ticket Creation', () => {
       cy.contains('Updated Test Ticket').should('be.visible');
     });
   });
-}); 
+});
