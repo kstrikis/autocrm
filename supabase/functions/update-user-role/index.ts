@@ -5,8 +5,24 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+const getAllowedOrigins = () => {
+  const origins = ['https://autocrm.kriss.cc'];
+  
+  // Allow localhost origins in development
+  if (Deno.env.get('ENVIRONMENT') !== 'production') {
+    origins.push(
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+      'http://localhost:54321',
+      'http://127.0.0.1:54321'
+    );
+  }
+  
+  return origins;
+};
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': 'https://autocrm.kriss.cc',
+  'Access-Control-Allow-Origin': '*', // We'll validate the origin in the request handler
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
@@ -26,9 +42,30 @@ interface UpdateRoleBody {
 }
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('Origin') || '';
+  const allowedOrigins = getAllowedOrigins();
+  
+  // Check if the origin is allowed
+  if (!allowedOrigins.includes(origin)) {
+    console.log('Origin not allowed:', origin);
+    return new Response(
+      JSON.stringify({ error: 'Origin not allowed' }),
+      { 
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+  }
+
+  // Set the actual origin in the CORS headers
+  const responseHeaders = {
+    ...corsHeaders,
+    'Access-Control-Allow-Origin': origin
+  };
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: responseHeaders })
   }
 
   try {
@@ -39,7 +76,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Method not allowed' }),
         { 
           status: 405,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...responseHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
@@ -53,7 +90,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Missing authorization header' }),
         { 
           status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...responseHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
@@ -69,7 +106,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Invalid authorization token', details: authError }),
         { 
           status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...responseHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
@@ -88,7 +125,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Unauthorized - Admin role required' }),
         { 
           status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...responseHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
@@ -108,7 +145,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Error fetching admins' }),
         { 
           status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...responseHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
@@ -120,7 +157,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Cannot remove last admin role' }),
         { 
           status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...responseHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
@@ -142,7 +179,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: updateError.message }),
         { 
           status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...responseHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
@@ -152,7 +189,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ data: updatedUser }),
       { 
         status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...responseHeaders, 'Content-Type': 'application/json' }
       }
     );
   } catch (error) {
@@ -161,7 +198,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ error: error.message }),
       { 
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...responseHeaders, 'Content-Type': 'application/json' }
       }
     );
   }

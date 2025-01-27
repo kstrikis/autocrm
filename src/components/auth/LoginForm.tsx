@@ -82,6 +82,10 @@ export function LoginForm(): React.ReactElement {
         )}
       </div>
 
+      {errors.root && (
+        <p className="text-sm text-red-500">{errors.root.message}</p>
+      )}
+
       <Button
         type="submit"
         className="w-full"
@@ -94,4 +98,4 @@ export function LoginForm(): React.ReactElement {
 
   logger.methodExit('LoginForm');
   return result;
-} 
+}
