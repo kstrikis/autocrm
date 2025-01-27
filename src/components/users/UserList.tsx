@@ -205,10 +205,10 @@ export function UserList(): React.ReactElement {
         {
           event: '*',
           schema: 'public',
-          table: 'user_profiles_with_email'
+          table: 'user_profiles'
         },
         () => {
-          logger.info('UserList: Received realtime update for user_profiles_with_email');
+          logger.info('UserList: Received realtime update for user_profiles');
           void fetchUsers();
         }
       )
@@ -396,36 +396,37 @@ export function UserList(): React.ReactElement {
 
         // Update each user's role
         const updatePromises = userIds.map(async (userId) => {
-          const { data: response, error: functionError } = await supabase.functions.invoke('update-user-role', {
-            body: { 
-              userId,
-              role: pendingAction.role
-            },
-            headers: {
-              Authorization: `Bearer ${session.access_token}`
-            }
-          });
+          // const { data: response, error: functionError } = await supabase.functions.invoke('update-user-role', {
+          //   body: { 
+          //     userId,
+          //     role: pendingAction.role
+          //   },
+          //   headers: {
+          //     Authorization: `Bearer ${session.access_token}`
+          //   }
+          // });
+          const { error } = await supabase.rpc('update_user_role', { user_id: userId, new_role: pendingAction.role })
 
-          if (functionError) {
-            logger.error('UserList: Edge function error', { error: functionError, userId });
-            throw new Error(`Edge function error: ${functionError.message}`);
+          if (error) {
+            logger.error('UserList: Edge function error', { error, userId });
+            throw new Error(`Edge function error: ${error.message}`);
           }
 
-          // Edge functions can return application errors in the response
-          if (response?.error) {
-            logger.error('UserList: Application error from edge function', { error: response.error, userId });
-            throw new Error(response.error);
-          }
+          // // Edge functions can return application errors in the response
+          // if (response?.error) {
+          //   logger.error('UserList: Application error from edge function', { error: response.error, userId });
+          //   throw new Error(response.error);
+          // }
 
-          if (!response?.data) {
-            logger.error('UserList: No data returned from update', { response, userId });
-            throw new Error('No data returned from update');
-          }
+          // if (!response?.data) {
+          //   logger.error('UserList: No data returned from update', { response, userId });
+          //   throw new Error('No data returned from update');
+          // }
 
           logger.info('UserList: Successfully updated user role', { 
             userId,
             requestedRole: pendingAction.role,
-            actualRole: response.data.role
+            // actualRole: response.data.role
           });
         });
 
