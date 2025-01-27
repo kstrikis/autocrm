@@ -14,6 +14,7 @@ import DashboardLayout from '@/components/DashboardLayout'
 import TicketsPage from '@/pages/TicketsPage'
 import TicketDetailsPage from '@/pages/TicketDetailsPage'
 import UsersPage from '@/pages/UsersPage'
+import NotFoundPage from '@/pages/NotFoundPage'
 
 export function App(): React.ReactElement {
   logger.methodEntry('App')
@@ -42,6 +43,7 @@ export function App(): React.ReactElement {
               <Route path="tickets/:ticketId" element={<TicketDetailsPage />} />
               <Route path="users" element={<UsersPage />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route path="*" element={<NotFoundPage />} />
             </Route>
           </Routes>
           <Toaster />
@@ -54,4 +56,3 @@ export function App(): React.ReactElement {
 }
 
 export default App
-
