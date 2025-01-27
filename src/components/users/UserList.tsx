@@ -199,7 +199,7 @@ export function UserList(): React.ReactElement {
   useEffect(() => {
     logger.methodEntry('UserList.setupSubscription');
     const subscription = supabase
-      .channel('supabase_realtime')
+      .channel('user-list-changes')
       .on(
         'postgres_changes',
         {
