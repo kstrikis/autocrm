@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EditTicketForm } from '@/components/tickets/EditTicketForm';
+import MessageInterface from '@/components/MessageInterface';
 import { Ticket, TicketStatus, TicketPriority } from '@/types/ticket';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase';
@@ -35,6 +36,14 @@ export default function TicketDetailsPage(): React.ReactElement {
   const [ticket, setTicket] = useState<TicketDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ id: string } | null>(null);
+
+  useEffect(() => {
+    // Get current user
+    void supabase.auth.getUser().then(({ data: { user } }) => {
+      setCurrentUser(user)
+    })
+  }, [])
 
   const fetchTicket = async (): Promise<void> => {
     logger.methodEntry('TicketDetailsPage.fetchTicket');
@@ -238,6 +247,14 @@ export default function TicketDetailsPage(): React.ReactElement {
               </div>
             )}
           </dl>
+        </div>
+
+        <div className="bg-white shadow rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-4">Conversation</h2>
+          <MessageInterface 
+            ticketId={ticket.id} 
+            isServiceRep={ticket.assignedTo === currentUser?.id}
+          />
         </div>
       </div>
     </div>
