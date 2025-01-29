@@ -1,6 +1,5 @@
 import React from 'react';
 import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
-import CustomerDashboardMetrics from '@/components/dashboard/CustomerDashboardMetrics';
 import { AdminDashboard } from '@/components/dashboard/AdminDashboard';
 import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/lib/logger';
@@ -24,11 +23,14 @@ export function DashboardPage(): React.ReactElement {
       
       <div className="mt-6">
         {isAdmin ? (
-          <AdminDashboard />
-        ) : isServiceRep ? (
-          <DashboardMetrics />
+          <>
+            <DashboardMetrics />
+            <div className="mt-8">
+              <AdminDashboard />
+            </div>
+          </>
         ) : (
-          <CustomerDashboardMetrics />
+          <DashboardMetrics />
         )}
       </div>
     </div>

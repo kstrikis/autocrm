@@ -1,14 +1,41 @@
 # AI Working Notes
 
-## Latest Changes (2024-01-29)
+## Latest Changes
 
-- Fixed CORS issues with Edge Functions by deploying the `message-create` function with proper CORS headers
-- Updated MessageInterface to properly handle authorization when sending messages
-- Fixed internal notes visibility - now only service reps can see internal notes
-- Updated types to match the Supabase database schema
-- Improved error handling and logging in message submission
+### Test Improvements and Fixes
+- Fixed status format in ticket seeding to use snake_case consistently
+- Updated e2e test files to use proper status formats and test IDs
+- Improved metrics display and testing in dashboard components
+- Consolidated dashboard metrics into a single component with role-based display
+- Added proper error handling and logging throughout tests
+- Fixed async/sync code mixing issues in test setup
+- Added more resilient checks for metrics and UI elements
 
-## Previous Changes
+### Component Updates
+- Merged CustomerDashboardMetrics into main DashboardMetrics component
+- Added loading states and test IDs to metric cards
+- Improved error handling and logging
+- Added real-time subscription for metrics updates
+- Added role-based metric display logic
+
+### Test Results
+- Auth tests: 6/6 passing
+- Customer access: 1/1 passing
+- Service rep access: 1/1 passing
+- Admin access: 0/1 failing (UI visibility issue)
+- Admin user management: 3/4 passing (last admin role change issue)
+- Ticket creation: 0/3 failing (async/sync code issue)
+- Ticket details: 0/3 failing (async/sync code issue)
+- Ticket conversations: 0/1 failing (database error)
+
+### Next Steps
+1. Fix async/sync code issues in test setup
+2. Address UI visibility issues in admin tests
+3. Implement proper error handling for last admin role change
+4. Fix database errors in ticket conversation tests
+5. Add more comprehensive logging throughout the application
+
+## Previous Notes
 
 ## Core System Patterns
 

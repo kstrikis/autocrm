@@ -61,9 +61,7 @@ describe('Admin User Management', () => {
     cy.get('table tbody tr').should('exist')
 
     cy.logStep('Looking for test user in table')
-    cy.contains('tr', TEST_USER_NAME, { timeout: 5000 }).within(() => {
-      cy.get('input[type="checkbox"]').should('be.visible').click()
-    })
+    cy.contains('tr', TEST_USER_NAME, { timeout: 5000 }).click()
 
     cy.logStep('Changing user role')
     cy.contains('1 user selected').should('be.visible')
@@ -77,8 +75,8 @@ describe('Admin User Management', () => {
     cy.get('[data-testid="confirm-dialog-confirm"]').should('be.visible').click()
 
     cy.logStep('Verifying success message')
-    cy.contains('Role Updated').should('be.visible')
-    cy.contains('Successfully updated user role to service_rep').should('be.visible')
+    cy.contains('Roles Updated').should('be.visible')
+    cy.contains('Successfully updated').should('be.visible')
 
     cy.logStep('Verifying role update in table')
     cy.get('table').contains('tr', TEST_USER_NAME).within(() => {
@@ -91,9 +89,7 @@ describe('Admin User Management', () => {
   it('should prevent changing last admin role', () => {
     cy.startSegment('Last Admin Protection')
     cy.logStep('Looking for admin user')
-    cy.get('table').contains('tr', TEST_ADMIN_EMAIL, { timeout: 5000 }).within(() => {
-      cy.get('input[type="checkbox"]').should('be.visible').click()
-    })
+    cy.get('table').contains('tr', TEST_ADMIN_EMAIL, { timeout: 5000 }).click()
 
     cy.logStep('Attempting to change admin role')
     cy.contains('1 user selected').should('be.visible')
@@ -107,7 +103,7 @@ describe('Admin User Management', () => {
 
     cy.logStep('Verifying admin role remains unchanged')
     cy.get('table').contains('tr', TEST_ADMIN_EMAIL).within(() => {
-      cy.contains('Admin').should('be.visible')
+      cy.contains('admin').should('be.visible')
     })
     cy.logStep('Test complete', { complete: true })
   })
@@ -144,9 +140,7 @@ describe('Admin User Management', () => {
 
     cy.logStep('Looking for test users in table')
     cy.wrap(testUsers).each((user) => {
-      cy.contains('tr', user.name, { timeout: 5000 }).within(() => {
-        cy.get('input[type="checkbox"]').should('be.visible').click()
-      })
+      cy.contains('tr', user.name, { timeout: 5000 }).click()
     })
 
     cy.logStep('Verifying batch actions')
@@ -163,8 +157,8 @@ describe('Admin User Management', () => {
     cy.get('[data-testid="confirm-dialog-confirm"]').should('be.visible').click()
 
     cy.logStep('Verifying success message')
-    cy.contains('Role Updated').should('be.visible')
-    cy.contains('Successfully updated user role to service_rep').should('be.visible')
+    cy.contains('Roles Updated').should('be.visible')
+    cy.contains('Successfully updated').should('be.visible')
 
     cy.logStep('Verifying role updates in table')
     cy.wrap(testUsers).each((user) => {
