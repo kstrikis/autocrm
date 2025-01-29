@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 import { Badge } from '@/components/ui/badge'
@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 interface MessageInterfaceProps {
   ticketId: string
   isServiceRep: boolean
+  assignedTo: string | null
+  onAssignmentChange?: () => void
 }
 
 interface Message {
@@ -31,13 +33,26 @@ interface MessageResponse {
   attachments: string[]
 }
 
-export default function MessageInterface({ ticketId, isServiceRep }: MessageInterfaceProps): React.ReactElement {
+export default function MessageInterface({ 
+  ticketId, 
+  isServiceRep, 
+  assignedTo,
+  onAssignmentChange 
+}: MessageInterfaceProps): React.ReactElement {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [isInternal, setIsInternal] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [currentUser, setCurrentUser] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [isAssigning, setIsAssigning] = useState(false)
+
+  const canSendMessage = useMemo(() => {
+    if (!currentUser) return false
+    if (!isServiceRep) return true // Customers can always send messages
+    return assignedTo === currentUser // Service reps must be assigned
+  }, [currentUser, isServiceRep, assignedTo])
 
   useEffect(() => {
     // Get current user ID
@@ -75,6 +90,7 @@ export default function MessageInterface({ ticketId, isServiceRep }: MessageInte
       logger.methodExit('MessageInterface')
     }
 
+    // Set up realtime subscription
     const channel = supabase
       .channel('ticket-messages')
       .on('postgres_changes', {
@@ -108,8 +124,7 @@ export default function MessageInterface({ ticketId, isServiceRep }: MessageInte
       })
       .subscribe()
 
-    void loadMessages()
-
+    // Cleanup subscription on unmount
     return () => {
       void channel.unsubscribe()
       logger.methodExit('MessageInterface')
@@ -120,21 +135,23 @@ export default function MessageInterface({ ticketId, isServiceRep }: MessageInte
     e.preventDefault()
     logger.methodEntry('MessageInterface')
 
-    if (!newMessage.trim()) {
+    if (!newMessage.trim() || !canSendMessage) {
       return
     }
 
     try {
+      setError(null)
       const { data, error } = await supabase.functions.invoke('message-create', {
         body: {
           content: newMessage.trim(),
           ticketId,
           isInternal,
-          attachments: [] // TODO: Implement file upload
+          attachments: []
         }
       })
 
       if (error) {
+        setError('Failed to send message. Please try again.')
         logger.error('Message submission failed', { 
           error,
           ticketId,
@@ -148,6 +165,7 @@ export default function MessageInterface({ ticketId, isServiceRep }: MessageInte
       logger.methodExit('MessageInterface')
 
     } catch (error) {
+      setError('Failed to send message. Please try again.')
       logger.error('Message submission failed', { 
         error: error instanceof Error ? error.message : error,
         stack: error instanceof Error ? error.stack : undefined,
@@ -156,6 +174,49 @@ export default function MessageInterface({ ticketId, isServiceRep }: MessageInte
       })
     }
   }
+
+  const handleAssignToMe = async () => {
+    logger.methodEntry('handleAssignToMe')
+    setIsAssigning(true)
+    setError(null)
+
+    try {
+      const { error: updateError } = await supabase
+        .from('tickets')
+        .update({ assigned_to: currentUser })
+        .eq('id', ticketId)
+
+      if (updateError) {
+        setError('Failed to assign ticket. Please try again.')
+        logger.error('Failed to assign ticket', { error: updateError })
+        return
+      }
+
+      onAssignmentChange?.()
+      logger.info('Successfully assigned ticket', { ticketId, userId: currentUser })
+    } catch (err) {
+      setError('Failed to assign ticket. Please try again.')
+      logger.error('Error assigning ticket', { 
+        error: err instanceof Error ? err.message : err 
+      })
+    } finally {
+      setIsAssigning(false)
+      logger.methodExit('handleAssignToMe')
+    }
+  }
+
+  // Add a helper function to get the message input status
+  const getInputStatus = () => {
+    if (!currentUser) return { message: "Loading...", canSend: false }
+    if (!isServiceRep) return { message: "", canSend: true }
+    if (assignedTo === currentUser) return { message: "", canSend: true }
+    return { 
+      message: "You must be assigned to this ticket to send messages. Please assign the ticket to yourself first.",
+      canSend: false 
+    }
+  }
+
+  const { message: statusMessage, canSend } = getInputStatus()
 
   return (
     <div className="message-interface">
@@ -196,32 +257,63 @@ export default function MessageInterface({ ticketId, isServiceRep }: MessageInte
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+            {error}
+          </div>
+        )}
+        
+        {statusMessage && (
+          <div className="text-sm text-yellow-600 bg-yellow-50 p-2 rounded flex items-center justify-between">
+            <span>{statusMessage}</span>
+            {isServiceRep && !canSend && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAssignToMe}
+                disabled={isAssigning}
+              >
+                {isAssigning ? 'Assigning...' : 'Assign to Me'}
+              </Button>
+            )}
+          </div>
+        )}
+
         <textarea
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
-          placeholder="Type your message..."
-          className="w-full min-h-[100px] p-3 border rounded-lg"
+          placeholder={canSend ? "Type your message..." : "You cannot send messages in this ticket"}
+          className={`w-full min-h-[100px] p-3 border rounded-lg ${
+            !canSend ? 'bg-gray-50 text-gray-500' : ''
+          }`}
           maxLength={2000}
+          disabled={!canSend}
         />
+
         <div className="flex justify-between items-center">
           {isServiceRep && (
-            <label className="flex items-center gap-2">
+            <label className={`flex items-center gap-2 ${!canSend ? 'opacity-50' : ''}`}>
               <input
                 type="checkbox"
                 checked={isInternal}
                 onChange={(e) => setIsInternal(e.target.checked)}
                 className="rounded border-gray-300"
+                disabled={!canSend}
               />
               <span className="text-sm">Internal Note</span>
             </label>
           )}
           <Button 
             type="submit" 
-            disabled={!newMessage.trim()}
+            disabled={!newMessage.trim() || !canSend}
+            variant={canSend ? "default" : "secondary"}
+            className={!canSend ? 'opacity-50' : ''}
           >
-            Send Message
+            {canSend ? 'Send Message' : 'Cannot Send'}
           </Button>
         </div>
+
         {uploadProgress > 0 && (
           <progress 
             value={uploadProgress} 

@@ -49,4 +49,7 @@ create policy "Authorized users can insert messages"
         or (tickets.assigned_to = (select id from public.user_profiles where id = auth.uid()) and is_internal = true)
       )
     )
-  ); 
+  );
+
+-- Enable realtime for ticket_messages
+alter publication supabase_realtime add table ticket_messages; 

@@ -29,28 +29,15 @@ Deno.serve(async (req) => {
   }
 
   const origin = req.headers.get('Origin') || ''
-  const allowedOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173']
+  const allowedOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:54321']
   
   if (Deno.env.get('ENVIRONMENT') === 'production') {
     allowedOrigins.push('https://autocrm.kriss.cc')
   }
 
-  if (!allowedOrigins.includes(origin)) {
-    return new Response(
-      JSON.stringify({ error: 'Origin not allowed' }),
-      { 
-        status: 403,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json'
-        }
-      }
-    )
-  }
-
   const responseHeaders = {
     ...corsHeaders,
-    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Origin': allowedOrigins.includes(origin) ? origin : '',
     'Content-Type': 'application/json'
   }
 

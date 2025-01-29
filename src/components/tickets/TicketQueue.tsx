@@ -75,18 +75,26 @@ export function TicketQueue(): React.ReactElement {
 //   const [hasOpenTicketsFilter, setHasOpenTicketsFilter] = useState<'all' | 'yes' | 'no'>('all');
 
   // Function to transform a Supabase ticket to our interface
-  const transformTicket = (ticket: SupabaseTicket): TicketWithNames => ({
-    id: ticket.id,
-    title: ticket.title,
-    description: ticket.description,
-    status: ticket.status as Exclude<TicketStatus, 'all'>,
-    priority: ticket.priority as Exclude<TicketPriority, 'all'>,
-    createdAt: ticket.created_at,
-    customerName: ticket.customer?.full_name || 'Unknown',
-    customerId: ticket.customer_id,
-    assignedToName: ticket.assigned?.full_name || null,
-    assignedTo: ticket.assigned_to
-  });
+  const transformTicket = (ticket: SupabaseTicket): TicketWithNames => {
+    logger.debug('TicketQueue: Transforming ticket data', { 
+      ticketId: ticket.id,
+      assigned: ticket.assigned,
+      assignedTo: ticket.assigned_to
+    });
+    
+    return {
+      id: ticket.id,
+      title: ticket.title,
+      description: ticket.description,
+      status: ticket.status as Exclude<TicketStatus, 'all'>,
+      priority: ticket.priority as Exclude<TicketPriority, 'all'>,
+      createdAt: ticket.created_at,
+      customerName: ticket.customer?.full_name || 'Unknown',
+      customerId: ticket.customer_id,
+      assignedToName: ticket.assigned?.full_name || null,
+      assignedTo: ticket.assigned_to
+    };
+  };
 
   // Initial subscription setup
   useEffect(() => {
@@ -113,8 +121,8 @@ export function TicketQueue(): React.ReactElement {
             created_at,
             customer_id,
             assigned_to,
-            customer:user_profiles!customer_id(*),
-            assigned:user_profiles!assigned_to(*)
+            customer:user_profiles!tickets_customer_id_fkey(id, full_name),
+            assigned:user_profiles!tickets_assigned_to_fkey(id, full_name)
           `)
           .order('created_at', { ascending: false })
           .range((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE - 1);
@@ -202,8 +210,8 @@ export function TicketQueue(): React.ReactElement {
                 created_at,
                 customer_id,
                 assigned_to,
-                customer:user_profiles!customer_id(*),
-                assigned:user_profiles!assigned_to(*)
+                customer:user_profiles!tickets_customer_id_fkey(id, full_name),
+                assigned:user_profiles!tickets_assigned_to_fkey(id, full_name)
               `)
               .eq('id', payload.new?.id || '')
               .single();
