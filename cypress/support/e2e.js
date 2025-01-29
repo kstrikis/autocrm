@@ -183,7 +183,7 @@ Cypress.Commands.add('createAdminManagedUser', (email, options = {}) => {
     displayName: options.displayName || options.fullName || defaults.fullName
   };
 
-  return cy.wrap(
+  return cy.then(() => 
     supabaseAdmin.auth.admin.createUser({
       email,
       password: config.password,
@@ -199,7 +199,7 @@ Cypress.Commands.add('createAdminManagedUser', (email, options = {}) => {
     if (error) {
       cy.pushToLog(`error: ${error.message}`);
       cy.popBuffer();
-      throw error; // This will be caught by Cypress's built-in error handling
+      throw error;
     }
 
     cy.pushToLog(`created (id: ${user.id}, role: ${config.role})`);
@@ -234,7 +234,7 @@ Cypress.Commands.add('createTestUser', (email, options = {}) => {
     displayName: options.displayName || options.fullName || defaults.fullName
   };
 
-  return cy.wrap(
+  return cy.then(() => 
     supabase.auth.signUp({
       email,
       password: config.password,
@@ -251,13 +251,13 @@ Cypress.Commands.add('createTestUser', (email, options = {}) => {
     if (response.error) {
       cy.pushToLog(`error: ${response.error.message}`);
       cy.popBuffer();
-      throw response.error; // Cypress will catch this automatically
+      throw response.error;
     }
 
     const userId = response.data?.user?.id;
     cy.pushToLog(`created (id: ${userId}, role: ${config.role})`);
     cy.popBuffer();
-    return response;
+    return cy.wrap(response);
   });
 });
 

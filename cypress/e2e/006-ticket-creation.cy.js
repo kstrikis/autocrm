@@ -32,19 +32,19 @@ describe('Ticket Creation', () => {
       cy.seedTestTickets(tickets);
     });
     
-    cy.task('log', { message: '🔑 Signing in', email: 'customer@example.com' });
+        cy.task('log', { message: '🔑 Signing in', email: 'customer@example.com' });
     cy.supabaseSignIn('customer@example.com');
     
-    cy.task('log', { message: '🌐 Visiting dashboard' });
-    cy.visit('/dashboard');
-    
-    cy.task('log', { message: '🎯 Clicking My Tickets nav link' });
-    cy.contains('My Tickets').click();
-    
-    cy.task('log', { message: '⏳ Waiting for tickets to load' });
-    // Wait for authentication to complete and tickets to load
-    cy.contains('Existing Ticket 1', { timeout: 10000 }).should('be.visible').then(() => {
-      cy.task('log', { message: '✅ Tickets loaded successfully' });
+          cy.task('log', { message: '🌐 Visiting dashboard' });
+          cy.visit('/dashboard');
+          
+          cy.task('log', { message: '🎯 Clicking My Tickets nav link' });
+          cy.contains('My Tickets').click();
+          
+          cy.task('log', { message: '⏳ Waiting for tickets to load' });
+          // Wait for authentication to complete and tickets to load
+          cy.contains('Existing Ticket 1', { timeout: 10000 }).should('be.visible').then(() => {
+            cy.task('log', { message: '✅ Tickets loaded successfully' });
     });
   });
 
