@@ -10,20 +10,20 @@ Here's the restructured implementation plan based on your requirements and insig
 ---
 
 ### 1. Core Layout & Navigation
-- [ ] **Base Routing Structure** [UI]  
+- [x] **Base Routing Structure** [UI]  
   Implement role-based route guards with empty components  
   - Customer/ServiceRep/Admin layout shells  
   - Auth redirect handling  
   - 404 fallback route
 
-- [ ] **Header System** [UI]  
+- [x] **Header System** [UI]  
   Build responsive header with:  
   - Dynamic logo routing per role  
   - Mobile-responsive menu toggle  
   - Notification badge placeholder  
   - User dropdown skeleton
 
-- [ ] **Navigation Drawers** [UI]  
+- [x] **Navigation Drawers** [UI]  
   Implement collapsible sidebars with:  
   - Role-filtered menu items  
   - Active route highlighting  
@@ -33,26 +33,26 @@ Here's the restructured implementation plan based on your requirements and insig
 ---
 
 ### 2. Ticketing System Foundation
-- [ ] **Tickets Table Migration** [DB]  
+- [x] **Tickets Table Migration** [DB]  
   Create `tickets` table with:  
   - Status/priority fields  
   - RLS for customer visibility  
   - Indexes for common queries
 
-- [ ] **Ticket Creation Flow** [Edge][UI]  
+- [x] **Ticket Creation Flow** [Edge][UI]  
   Build with:  
   - Edge function validation (title/description length)  
   - Supabase Storage integration for attachments  
   - Loading states/error feedback
 
-- [ ] **Ticket List Views** [UI]  
+- [x] **Ticket List Views** [UI]  
   Implement with:  
   - Role-based filtering (customer vs team)  
   - Sortable columns (priority/date)  
   - Status color coding  
   - Pagination controls
 
-- [ ] **Ticket Detail Page** [Edge][UI]  
+- [x] **Ticket Detail Page** [Edge][UI]  
   Create with:  
   - Realtime subscription to updates  
   - Message thread placeholder  

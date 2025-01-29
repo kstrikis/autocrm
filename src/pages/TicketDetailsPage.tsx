@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EditTicketForm } from '@/components/tickets/EditTicketForm';
+import MessageInterface from '@/components/MessageInterface';
 import { Ticket, TicketStatus, TicketPriority } from '@/types/ticket';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase';
@@ -35,6 +36,14 @@ export default function TicketDetailsPage(): React.ReactElement {
   const [ticket, setTicket] = useState<TicketDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ id: string } | null>(null);
+
+  useEffect(() => {
+    // Get current user
+    void supabase.auth.getUser().then(({ data: { user } }) => {
+      setCurrentUser(user)
+    })
+  }, [])
 
   const fetchTicket = async (): Promise<void> => {
     logger.methodEntry('TicketDetailsPage.fetchTicket');
@@ -49,8 +58,8 @@ export default function TicketDetailsPage(): React.ReactElement {
         .from('tickets')
         .select(`
           *,
-          customer:user_profiles!customer_id(id, full_name),
-          assigned:user_profiles!assigned_to(id, full_name)
+          customer:user_profiles!tickets_customer_id_fkey(id, full_name),
+          assigned:user_profiles!tickets_assigned_to_fkey(id, full_name)
         `)
         .eq('id', ticketId)
         .single();
@@ -64,6 +73,12 @@ export default function TicketDetailsPage(): React.ReactElement {
         logger.error('TicketDetailsPage: Ticket not found', { ticketId });
         throw new Error('Ticket not found');
       }
+
+      logger.debug('TicketDetailsPage: Mapping ticket data', {
+        ticketId: data.id,
+        assigned: data.assigned,
+        assignedTo: data.assigned_to
+      });
 
       const ticketDetails: TicketDetails = {
         id: data.id,
@@ -109,11 +124,16 @@ export default function TicketDetailsPage(): React.ReactElement {
           table: 'tickets',
           filter: `id=eq.${ticketId}`,
         },
-        (status): void => {
-          logger.info('TicketDetailsPage: Subscription status', { status });
+        (payload) => {
+          logger.info('TicketDetailsPage: Received ticket update', { 
+            event: payload.eventType,
+            new: payload.new,
+            old: payload.old
+          });
+          void fetchTicket();
         }
       )
-      .subscribe((status): void => {
+      .subscribe((status) => {
         logger.info('TicketDetailsPage: Subscription status', { status });
       });
 
@@ -209,7 +229,37 @@ export default function TicketDetailsPage(): React.ReactElement {
           <dl className="grid grid-cols-2 gap-4">
             <div>
               <dt className="text-sm font-medium text-gray-500">Assigned To</dt>
-              <dd>{ticket.assignedToName || 'Unassigned'}</dd>
+              <dd className="flex items-center gap-2">
+                <span>{ticket.assignedToName || 'Unassigned'}</span>
+                {!ticket.assignedTo && currentUser && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      logger.methodEntry('assignToMe');
+                      try {
+                        const { error: updateError } = await supabase
+                          .from('tickets')
+                          .update({ assigned_to: currentUser.id })
+                          .eq('id', ticket.id);
+
+                        if (updateError) {
+                          logger.error('Failed to assign ticket', { error: updateError });
+                          return;
+                        }
+
+                        void fetchTicket();
+                        logger.info('Successfully assigned ticket', { ticketId: ticket.id });
+                      } catch (err) {
+                        logger.error('Error assigning ticket', { error: err });
+                      }
+                      logger.methodExit('assignToMe');
+                    }}
+                  >
+                    Assign to Me
+                  </Button>
+                )}
+              </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Last Updated</dt>
@@ -238,6 +288,16 @@ export default function TicketDetailsPage(): React.ReactElement {
               </div>
             )}
           </dl>
+        </div>
+
+        <div className="bg-white shadow rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-4">Conversation</h2>
+          <MessageInterface 
+            ticketId={ticket.id} 
+            isServiceRep={ticket.assignedTo === currentUser?.id}
+            assignedTo={ticket.assignedTo || null}
+            onAssignmentChange={fetchTicket}
+          />
         </div>
       </div>
     </div>
