@@ -3,37 +3,33 @@
 ## Latest Changes
 
 ### Test Improvements and Fixes
-- Fixed status format in ticket seeding to use snake_case consistently
-- Updated e2e test files to use proper status formats and test IDs
-- Improved metrics display and testing in dashboard components
-- Consolidated dashboard metrics into a single component with role-based display
-- Added proper error handling and logging throughout tests
-- Fixed async/sync code mixing issues in test setup
-- Added more resilient checks for metrics and UI elements
-
-### Component Updates
-- Merged CustomerDashboardMetrics into main DashboardMetrics component
-- Added loading states and test IDs to metric cards
-- Improved error handling and logging
-- Added real-time subscription for metrics updates
-- Added role-based metric display logic
+- Fixed ticket conversations test to properly handle internal notes
+- Added proper scrolling and visibility checks for message elements
+- Improved test resilience with better selectors and timeouts
+- Fixed cleanup sequence in beforeEach/afterEach hooks
+- Added proper chaining of user creation and ticket seeding
+- Fixed user role format in test setup (service_rep instead of service-rep)
+- Added more detailed logging throughout the test
+- Fixed promise handling in user creation commands
 
 ### Test Results
 - Auth tests: 6/6 passing
 - Customer access: 1/1 passing
 - Service rep access: 1/1 passing
-- Admin access: 0/1 failing (UI visibility issue)
-- Admin user management: 3/4 passing (last admin role change issue)
-- Ticket creation: 0/3 failing (async/sync code issue)
-- Ticket details: 0/3 failing (async/sync code issue)
-- Ticket conversations: 0/1 failing (database error)
+- Admin access: 1/1 passing
+- Admin user management: 4/4 passing
+- Ticket creation: 3/3 passing
+- Ticket details: 3/3 passing
+- Ticket conversations: 1/1 passing
+
+### Component Updates
+- No component changes required
+- All tests now passing with existing component implementation
 
 ### Next Steps
-1. Fix async/sync code issues in test setup
-2. Address UI visibility issues in admin tests
-3. Implement proper error handling for last admin role change
-4. Fix database errors in ticket conversation tests
-5. Add more comprehensive logging throughout the application
+- Consider adding more edge cases to the ticket conversations test
+- Consider adding tests for message attachments
+- Consider adding tests for real-time updates
 
 ## Previous Notes
 
