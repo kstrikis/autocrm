@@ -2,15 +2,23 @@
 
 ## Latest Changes
 
-### Test Improvements and Fixes
-- Fixed ticket conversations test to properly handle internal notes
-- Added proper scrolling and visibility checks for message elements
-- Improved test resilience with better selectors and timeouts
-- Fixed cleanup sequence in beforeEach/afterEach hooks
-- Added proper chaining of user creation and ticket seeding
-- Fixed user role format in test setup (service_rep instead of service-rep)
-- Added more detailed logging throughout the test
-- Fixed promise handling in user creation commands
+### AI Assistant Feature Implementation
+- Added AI assistant for service representatives
+- Implemented natural language processing for ticket updates
+- Added voice input support with OpenAI Whisper
+- Created AI actions dashboard for oversight
+- Added user preferences for AI features
+
+### Database Changes
+- Created ai_actions table with RLS policies
+- Added AI preferences to user_profiles
+- Added status update function for AI actions
+
+### Component Updates
+- Added AIInput component with voice support
+- Added AIActionsDashboard for action management
+- Updated ServiceRepDashboard with AI tabs
+- Added real-time updates for AI actions
 
 ### Test Results
 - Auth tests: 6/6 passing
@@ -21,15 +29,14 @@
 - Ticket creation: 3/3 passing
 - Ticket details: 3/3 passing
 - Ticket conversations: 1/1 passing
-
-### Component Updates
-- No component changes required
-- All tests now passing with existing component implementation
+- AI assistant: 4/4 passing
 
 ### Next Steps
-- Consider adding more edge cases to the ticket conversations test
-- Consider adding tests for message attachments
-- Consider adding tests for real-time updates
+- Add more sophisticated AI action interpretation
+- Implement undo/redo for AI actions
+- Add bulk action approval
+- Add AI action analytics
+- Consider adding AI-powered ticket categorization
 
 ## Previous Notes
 
@@ -40,13 +47,17 @@
   - Roles: customer/service_rep/admin (Postgres enum)
   - Extends auth.users with profile data
   - RLS policies enforce role-based access
+  - AI preferences for service reps
 - **Tickets**:
   - Statuses: new/open/pending*/resolved/closed
   - Priorities: low/medium/high/urgent
   - Realtime updates via Postgres publications
-- **Relationships**:
-  - Tickets have customer_id (owner) and assigned_to (service rep)
-  - Cascade deletes with foreign keys
+  - AI-assisted updates
+- **AI Actions**:
+  - Types: add_note/update_status/update_tags
+  - Statuses: pending/approved/rejected/executed/failed
+  - RLS for service rep access
+  - Real-time updates via Postgres publications
 
 ### Auth Flow
 - Supabase JWT with custom claims for roles
@@ -62,21 +73,25 @@
   - `/auth` - Public auth forms
   - `/dashboard` - Role-based layouts
   - `/tickets` - Ticket management views
+  - `/ai-actions` - AI action management
 - **Component Patterns**:
   - Container components handle data fetching
   - Presentational components use shadcn/ui
   - Custom hooks for Supabase subscriptions
+  - Real-time AI action updates
 
 ### Testing Strategy
 - **Cypress**:
-  - Custom logging commands (logStep/pushToLog)
-  - Test numbering system for traceability
-  - Session reuse between tests
+  - Custom logging commands
+  - Test numbering system
+  - Session reuse
+  - AI feature testing
 - **Key Tests**:
-  - Auth flow permutations
-  - Role-based access control
-  - Ticket lifecycle transitions
-  - Realtime update verification
+  - Auth flow
+  - Role-based access
+  - Ticket lifecycle
+  - AI action workflow
+  - Voice input handling
 
 ## Technical Standards
 
@@ -85,47 +100,55 @@
   - Strict null checks
   - GraphQL type generation
   - Supabase response typing
+  - AI action type safety
 - **Logging**:
   - Mandatory method entry/exit logs
-  - Sensitive data scrubbing
-  - Centralized logger configuration
+  - AI action tracking
+  - Error handling
+  - Voice input debugging
 
 ### Security
 - **Backend**:
-  - RLS for all Postgres tables
-  - Service role keys only in Edge Functions
-  - Admin operations require JWT validation
+  - RLS for all tables
+  - Service role keys in Edge Functions
+  - Admin operations require JWT
+  - AI API keys in environment
 - **Frontend**:
-  - Never store sensitive keys
-  - Input sanitization in forms
+  - No sensitive key storage
+  - Input sanitization
   - Auto-complete hardening
+  - Voice permission handling
 
 ### Realtime System
-- Postgres publication for tickets/users
+- Postgres publications for tickets/users/actions
 - Supabase channel subscriptions
 - Optimistic UI updates
-- Subscription cleanup on unmount
+- Subscription cleanup
 
 ## Deployment Setup
 
 ### Supabase Config
 - Migrations sequence:
-  1. Core tables (users → tickets)
-  2. Realtime enablement
-  3. Security hardening
+  1. Core tables
+  2. AI tables
+  3. Realtime enablement
+  4. Security hardening
 - Edge Functions:
   - Deno runtime
   - CORS configuration
-  - Environment separation (local/prod)
+  - Environment separation
+  - AI service integration
 
 ### CI/CD Pipeline
 - Test stages:
-  1. Lint (ESLint)
-  2. Build (Vite)
-  3. E2E (Cypress headless)
+  1. Lint
+  2. Build
+  3. E2E
+  4. AI Integration
 - Seed scripts:
-  - Idempotent data creation
-  - Environment-aware (demo vs prod)
+  - Demo data creation
+  - AI action examples
+  - Test user setup
 
 ## Pending Tasks
 
@@ -133,14 +156,19 @@
 - [ ] Complete ticket lifecycle E2E test
 - [ ] Implement batch role updates
 - [ ] Add audit logging to edge functions
+- [ ] Add AI action analytics
 
 ### Technical Debt
-- Bundle size optimization (Vite analysis)
+- Bundle size optimization
 - Subscription memory leaks
-- Flaky admin checkbox tests
+- Flaky admin tests
+- AI action performance monitoring
 
 ## Key Decisions
-1. Use Postgres enums over check constraints for better GraphQL typing
-2. Implement soft deletes via status fields instead of data removal
-3. Centralized error handling in Edge Functions with CORS safety
-4. Client-side cache invalidation strategy using Supabase realtime
+1. Use Postgres enums for better typing
+2. Implement soft deletes via status
+3. Centralized error handling
+4. Client-side cache invalidation
+5. AI processing in Edge Functions
+6. Default to internal notes for safety
+7. Require approval by default

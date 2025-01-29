@@ -195,4 +195,4 @@ class Logger {
 export const logger = new Logger();
 
 // Also export the class for custom instances
-export { Logger }; 
+export { Logger };

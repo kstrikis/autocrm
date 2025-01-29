@@ -241,6 +241,38 @@ export interface Ticket extends Omit<DbTicket, 'created_at' | 'updated_at' | 're
   assignedTo: string | null;
 }
 
+export type AIActionType = 'add_note' | 'update_status' | 'update_tags';
+export type AIActionStatus = 'pending' | 'approved' | 'rejected' | 'executed' | 'failed';
+
+export interface AIAction {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+  ticket_id: string;
+  input_text: string;
+  action_type: AIActionType;
+  interpreted_action: {
+    customer_name: string;
+    note_content?: string;
+    is_customer_visible?: boolean;
+    status_update?: string;
+    tags_to_add?: string[];
+    tags_to_remove?: string[];
+  };
+  status: AIActionStatus;
+  error_message?: string;
+  executed_at?: string;
+  requires_approval: boolean;
+}
+
+export interface UserAIPreferences {
+  requireApproval: boolean;
+  enableVoiceInput: boolean;
+  defaultNoteVisibility: 'internal' | 'customer';
+}
+
+// Update UserProfile interface to include AI preferences
 export interface UserProfile extends Omit<DbUserProfile, 'full_name' | 'display_name' | 'avatar_url' | 'created_at' | 'updated_at' | 'last_seen_at'> {
   fullName: string;
   displayName: string | null;
@@ -248,6 +280,7 @@ export interface UserProfile extends Omit<DbUserProfile, 'full_name' | 'display_
   createdAt: string;
   updatedAt: string;
   lastSeenAt: string;
+  aiPreferences: UserAIPreferences;
   tickets: Ticket[];
 }
 
