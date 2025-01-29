@@ -1,4 +1,14 @@
-# Architecture Working Notes
+# AI Working Notes
+
+## Latest Changes (2024-01-29)
+
+- Fixed CORS issues with Edge Functions by deploying the `message-create` function with proper CORS headers
+- Updated MessageInterface to properly handle authorization when sending messages
+- Fixed internal notes visibility - now only service reps can see internal notes
+- Updated types to match the Supabase database schema
+- Improved error handling and logging in message submission
+
+## Previous Changes
 
 ## Core System Patterns
 

@@ -26,8 +26,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase';
-import type { UserProfile, Ticket } from '@/lib/database.types';
 import type { Database } from '@/lib/database.types';
+import type { UserProfile, Ticket } from '@/lib/database.types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from "@/hooks/use-toast";
 import {

@@ -1,8 +1,17 @@
-import { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import type { Database } from '@/lib/database.types'
+
+type DbMessage = Database['public']['Tables']['ticket_messages']['Row'] & {
+  sender: {
+    id: string
+    full_name: string
+    avatar_url: string | null
+  } | null
+}
 
 interface MessageInterfaceProps {
   ticketId: string
@@ -23,15 +32,18 @@ interface Message {
   }
 }
 
-interface MessageResponse {
-  id: string
-  ticket_id: string
-  sender_id: string
-  content: string
-  created_at: string
-  is_internal: boolean
-  attachments: string[]
-}
+// Transform function to convert DB type to our component type
+const transformDbMessage = (msg: DbMessage): Message => ({
+  id: msg.id,
+  content: msg.content,
+  created_at: msg.created_at,
+  is_internal: msg.is_internal,
+  sender: msg.sender || {
+    id: msg.sender_id,
+    full_name: 'Unknown',
+    avatar_url: null
+  }
+})
 
 export default function MessageInterface({ 
   ticketId, 
@@ -39,20 +51,21 @@ export default function MessageInterface({
   assignedTo,
   onAssignmentChange 
 }: MessageInterfaceProps): React.ReactElement {
+  logger.methodEntry('MessageInterface');
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [isInternal, setIsInternal] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
   const [currentUser, setCurrentUser] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isAssigning, setIsAssigning] = useState(false)
 
-  const canSendMessage = useMemo(() => {
+  const canSendMessage = (): boolean => {
     if (!currentUser) return false
     if (!isServiceRep) return true // Customers can always send messages
     return assignedTo === currentUser // Service reps must be assigned
-  }, [currentUser, isServiceRep, assignedTo])
+  }
 
   useEffect(() => {
     // Get current user ID
@@ -61,10 +74,8 @@ export default function MessageInterface({
     })
   }, [])
 
-  useEffect(() => {
-    logger.methodEntry('MessageInterface')
-    
-    const loadMessages = async () => {
+  useEffect((): (() => void) => {
+    const loadMessages = async (): Promise<void> => {
       const { data, error } = await supabase
         .from('ticket_messages')
         .select(`
@@ -72,11 +83,10 @@ export default function MessageInterface({
           content,
           created_at,
           is_internal,
-          sender:user_profiles (
-            id,
-            full_name,
-            avatar_url
-          )
+          sender_id,
+          ticket_id,
+          attachments,
+          sender:user_profiles!sender_id(id, full_name, avatar_url)
         `)
         .eq('ticket_id', ticketId)
         .order('created_at', { ascending: true })
@@ -86,9 +96,17 @@ export default function MessageInterface({
         return
       }
 
-      setMessages(data)
-      logger.methodExit('MessageInterface')
+      if (data) {
+        const typedData = data as unknown as DbMessage[]
+        // Filter out internal messages for non-service reps
+        const filteredData = isServiceRep 
+          ? typedData 
+          : typedData.filter(msg => !msg.is_internal)
+        setMessages(filteredData.map(transformDbMessage))
+      }
     }
+
+    void loadMessages()
 
     // Set up realtime subscription
     const channel = supabase
@@ -98,7 +116,7 @@ export default function MessageInterface({
         schema: 'public',
         table: 'ticket_messages',
         filter: `ticket_id=eq.${ticketId}`
-      }, async (payload) => {
+      }, async (payload): Promise<void> => {
         // Fetch the complete message with user profile data
         const { data: messageWithSender } = await supabase
           .from('ticket_messages')
@@ -107,62 +125,71 @@ export default function MessageInterface({
             content,
             created_at,
             is_internal,
-            sender:user_profiles (
-              id,
-              full_name,
-              avatar_url
-            )
+            sender_id,
+            ticket_id,
+            attachments,
+            sender:user_profiles!sender_id(id, full_name, avatar_url)
           `)
           .eq('id', payload.new.id)
           .single()
 
         if (messageWithSender) {
-          setMessages(prev => [...prev, messageWithSender])
-          logger.info('New message received')
-          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+          const typedMessage = messageWithSender as unknown as DbMessage
+          // Only add the message if it's not internal or if the user is a service rep
+          if (!typedMessage.is_internal || isServiceRep) {
+            setMessages(prev => [...prev, transformDbMessage(typedMessage)])
+            logger.info('New message received')
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+          }
         }
       })
       .subscribe()
 
-    // Cleanup subscription on unmount
-    return () => {
+    return (): void => {
       void channel.unsubscribe()
-      logger.methodExit('MessageInterface')
     }
-  }, [ticketId])
+  }, [ticketId, isServiceRep])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault()
-    logger.methodEntry('MessageInterface')
+    logger.methodEntry('MessageInterface.handleSubmit')
 
-    if (!newMessage.trim() || !canSendMessage) {
+    if (!newMessage.trim() || !canSendMessage()) {
       return
     }
 
     try {
       setError(null)
-      const { data, error } = await supabase.functions.invoke('message-create', {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        throw new Error('No access token available')
+      }
+
+      const { error: submitError } = await supabase.functions.invoke('message-create', {
         body: {
           content: newMessage.trim(),
           ticketId,
           isInternal,
           attachments: []
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
         }
       })
 
-      if (error) {
+      if (submitError) {
         setError('Failed to send message. Please try again.')
         logger.error('Message submission failed', { 
-          error,
+          error: submitError,
           ticketId,
           isInternal 
         })
-        throw error
+        throw submitError
       }
 
       setNewMessage('')
       setIsInternal(false)
-      logger.methodExit('MessageInterface')
+      logger.methodExit('MessageInterface.handleSubmit')
 
     } catch (error) {
       setError('Failed to send message. Please try again.')
@@ -175,7 +202,7 @@ export default function MessageInterface({
     }
   }
 
-  const handleAssignToMe = async () => {
+  const handleAssignToMe = async (): Promise<void> => {
     logger.methodEntry('handleAssignToMe')
     setIsAssigning(true)
     setError(null)
@@ -205,20 +232,7 @@ export default function MessageInterface({
     }
   }
 
-  // Add a helper function to get the message input status
-  const getInputStatus = () => {
-    if (!currentUser) return { message: "Loading...", canSend: false }
-    if (!isServiceRep) return { message: "", canSend: true }
-    if (assignedTo === currentUser) return { message: "", canSend: true }
-    return { 
-      message: "You must be assigned to this ticket to send messages. Please assign the ticket to yourself first.",
-      canSend: false 
-    }
-  }
-
-  const { message: statusMessage, canSend } = getInputStatus()
-
-  return (
+  const result = (
     <div className="message-interface">
       <div className="message-list max-h-[500px] overflow-y-auto space-y-4 mb-4">
         {messages.map(message => (
@@ -263,65 +277,58 @@ export default function MessageInterface({
           </div>
         )}
         
-        {statusMessage && (
+        {!canSendMessage() && isServiceRep && (
           <div className="text-sm text-yellow-600 bg-yellow-50 p-2 rounded flex items-center justify-between">
-            <span>{statusMessage}</span>
-            {isServiceRep && !canSend && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleAssignToMe}
-                disabled={isAssigning}
-              >
-                {isAssigning ? 'Assigning...' : 'Assign to Me'}
-              </Button>
-            )}
+            <span>You must be assigned to this ticket to send messages.</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAssignToMe}
+              disabled={isAssigning}
+            >
+              {isAssigning ? 'Assigning...' : 'Assign to Me'}
+            </Button>
           </div>
         )}
 
         <textarea
           value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          placeholder={canSend ? "Type your message..." : "You cannot send messages in this ticket"}
+          onChange={(e): void => setNewMessage(e.target.value)}
+          placeholder={canSendMessage() ? "Type your message..." : "You cannot send messages in this ticket"}
           className={`w-full min-h-[100px] p-3 border rounded-lg ${
-            !canSend ? 'bg-gray-50 text-gray-500' : ''
+            !canSendMessage() ? 'bg-gray-50 text-gray-500' : ''
           }`}
           maxLength={2000}
-          disabled={!canSend}
+          disabled={!canSendMessage()}
         />
 
         <div className="flex justify-between items-center">
           {isServiceRep && (
-            <label className={`flex items-center gap-2 ${!canSend ? 'opacity-50' : ''}`}>
+            <label className={`flex items-center gap-2 ${!canSendMessage() ? 'opacity-50' : ''}`}>
               <input
                 type="checkbox"
                 checked={isInternal}
-                onChange={(e) => setIsInternal(e.target.checked)}
+                onChange={(e): void => setIsInternal(e.target.checked)}
                 className="rounded border-gray-300"
-                disabled={!canSend}
+                disabled={!canSendMessage()}
               />
               <span className="text-sm">Internal Note</span>
             </label>
           )}
           <Button 
             type="submit" 
-            disabled={!newMessage.trim() || !canSend}
-            variant={canSend ? "default" : "secondary"}
-            className={!canSend ? 'opacity-50' : ''}
+            disabled={!newMessage.trim() || !canSendMessage()}
+            variant={canSendMessage() ? "default" : "secondary"}
+            className={!canSendMessage() ? 'opacity-50' : ''}
           >
-            {canSend ? 'Send Message' : 'Cannot Send'}
+            {canSendMessage() ? 'Send Message' : 'Cannot Send'}
           </Button>
         </div>
-
-        {uploadProgress > 0 && (
-          <progress 
-            value={uploadProgress} 
-            max="100"
-            className="w-full"
-          />
-        )}
       </form>
     </div>
-  )
+  );
+
+  logger.methodExit('MessageInterface');
+  return result;
 } 

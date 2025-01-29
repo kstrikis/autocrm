@@ -9,19 +9,71 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      ticket_messages: {
+        Row: {
+          attachments: string[] | null
+          content: string
+          created_at: string
+          id: string
+          is_internal: boolean
+          sender_id: string
+          ticket_id: string
+        }
+        Insert: {
+          attachments?: string[] | null
+          content: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean
+          sender_id: string
+          ticket_id: string
+        }
+        Update: {
+          attachments?: string[] | null
+          content?: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean
+          sender_id?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles_with_email"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tickets: {
         Row: {
           assigned_to: string | null
           closed_at: string | null
           created_at: string
           customer_id: string
-          description: string
+          description: string | null
           id: string
-          metadata: Json | null
+          metadata: Json
           priority: Database["public"]["Enums"]["ticket_priority"]
           resolved_at: string | null
           status: Database["public"]["Enums"]["ticket_status"]
-          tags: string[] | null
+          tags: string[]
           title: string
           updated_at: string
         }
@@ -30,13 +82,13 @@ export type Database = {
           closed_at?: string | null
           created_at?: string
           customer_id: string
-          description: string
+          description?: string | null
           id?: string
-          metadata?: Json | null
+          metadata?: Json
           priority?: Database["public"]["Enums"]["ticket_priority"]
           resolved_at?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
-          tags?: string[] | null
+          tags?: string[]
           title: string
           updated_at?: string
         }
@@ -45,13 +97,13 @@ export type Database = {
           closed_at?: string | null
           created_at?: string
           customer_id?: string
-          description?: string
+          description?: string | null
           id?: string
-          metadata?: Json | null
+          metadata?: Json
           priority?: Database["public"]["Enums"]["ticket_priority"]
           resolved_at?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
-          tags?: string[] | null
+          tags?: string[]
           title?: string
           updated_at?: string
         }
@@ -64,10 +116,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tickets_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "user_profiles_with_email"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tickets_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles_with_email"
             referencedColumns: ["id"]
           },
         ]
@@ -110,14 +176,35 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      user_profiles_with_email: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          display_name: string | null
+          email: string | null
+          full_name: string | null
+          id: string | null
+          last_seen_at: string | null
+          role: Database["public"]["Enums"]["user_role"] | null
+          status: Database["public"]["Enums"]["user_status"] | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      custom_access_token_hook: {
+      delete_user: {
         Args: {
-          event: Json
+          user_id: string
         }
-        Returns: Json
+        Returns: undefined
+      }
+      update_user_role: {
+        Args: {
+          user_id: string
+          new_role: Database["public"]["Enums"]["user_role"]
+        }
+        Returns: undefined
       }
     }
     Enums: {
