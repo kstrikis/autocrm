@@ -157,9 +157,9 @@ describe('Admin Access', () => {
       .should('be.visible')
       .within(() => {
         // Verify we can see our test users
-        cy.contains(TEST_CUSTOMER1_EMAIL).should('be.visible')
-        cy.contains(TEST_CUSTOMER2_EMAIL).should('be.visible')
-        cy.contains(TEST_ADMIN_EMAIL).should('be.visible')
+        cy.contains(TEST_CUSTOMER1_EMAIL).scrollIntoView().should('be.visible')
+        cy.contains(TEST_CUSTOMER2_EMAIL).scrollIntoView().should('be.visible')
+        cy.contains(TEST_ADMIN_EMAIL).scrollIntoView().should('be.visible')
       })
       
     cy.logStep('Test complete', { complete: true })

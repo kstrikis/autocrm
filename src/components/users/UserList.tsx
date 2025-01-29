@@ -293,30 +293,63 @@ export function UserList(): React.ReactElement {
     return (): void => document.removeEventListener('mouseup', handleMouseUp);
   }, []);
 
-  const handleBatchAction = (action: BatchAction, userIdsOverride?: string[]): void => {
+  const handleBatchAction = async (action: BatchAction, userIdsOverride?: string[]): Promise<void> => {
     logger.methodEntry('UserList.handleBatchAction', { action, userIdsOverride });
     setErrorMessage(null); // Clear any previous errors
+    const userIds = userIdsOverride || Array.from(selectedUsers);
+
+    // Check for last admin if we're changing roles
+    if (action.type === 'changeRole' && action.role !== 'admin') {
+      const { data: admins, error: adminsError } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('role', 'admin');
+
+      if (adminsError) {
+        logger.error('UserList: Error checking admin users', { error: adminsError });
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to verify admin status"
+        });
+        return;
+      }
+
+      const adminIds = new Set(admins?.map(a => a.id) || []);
+      const selectedAdmins = userIds.filter(id => adminIds.has(id));
+
+      if (selectedAdmins.length > 0 && selectedAdmins.length >= adminIds.size) {
+        logger.error('UserList: Cannot change role of last admin', { selectedAdmins });
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Cannot change role of last admin"
+        });
+        return;
+      }
+    }
+
     setPendingAction(action);
     setShowConfirmDialog(true);
-    setUserIdsToProcess(userIdsOverride || Array.from(selectedUsers));
+    setUserIdsToProcess(userIds);
     logger.methodExit('UserList.handleBatchAction');
   };
 
   const handleBatchDelete = (): void => {
     logger.methodEntry('UserList.handleBatchDelete');
-    handleBatchAction({ type: 'delete' });
+    void handleBatchAction({ type: 'delete' });
     logger.methodExit('UserList.handleBatchDelete');
   };
 
   const handleBatchRoleChange = (role: UserRole): void => {
     logger.methodEntry('UserList.handleBatchRoleChange', { role });
-    handleBatchAction({ type: 'changeRole', role });
+    void handleBatchAction({ type: 'changeRole', role });
     logger.methodExit('UserList.handleBatchRoleChange');
   };
 
   const handleTicketWarningConfirm = (): void => {
     setShowTicketWarning(false);
-    handleBatchAction({ type: 'delete' });
+    void handleBatchAction({ type: 'delete' });
   };
 
   const executeBatchAction = async (): Promise<void> => {
@@ -476,7 +509,7 @@ export function UserList(): React.ReactElement {
   const handleSingleUserAction = (userId: string, action: BatchAction): void => {
     logger.methodEntry('UserList.handleSingleUserAction', { userId, action });
     setOpenDropdowns(new Set());
-    handleBatchAction(action, [userId]);
+    void handleBatchAction(action, [userId]);
     logger.methodExit('UserList.handleSingleUserAction');
   };
 
