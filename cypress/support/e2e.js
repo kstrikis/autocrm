@@ -440,7 +440,7 @@ Cypress.Commands.add('cleanupTestTickets', () => {
     supabaseAdmin
       .from('tickets')
       .delete()
-      .neq('id', 0)
+      .gte('created_at', '2000-01-01')  // Delete all tickets created after year 2000
   ).then(({ error }) => {
     if (error) {
       cy.pushToLog(`error: ${error.message}`);
@@ -485,7 +485,7 @@ Cypress.Commands.add('seedTestTickets', (tickets) => {
       }
 
       // Status validation
-      const validStatus = ['new', 'open', 'pendingCustomer', 'pendingInternal', 'resolved', 'closed'];
+      const validStatus = ['new', 'open', 'pending_customer', 'pendingCustomer', 'pending_internal', 'pendingInternal', 'resolved', 'closed'];
       if (!validStatus.includes(ticket.status)) {
         const error = `Invalid status: ${ticket.status}`;
         cy.pushToLog(`validation failed: ${error}`);
@@ -507,7 +507,7 @@ Cypress.Commands.add('seedTestTickets', (tickets) => {
     const processed = tickets.map(ticket => ({
       title: ticket.title,
       description: ticket.description,
-      status: ticket.status.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`),
+      status: ticket.status,
       priority: ticket.priority,
       customer_id: ticket.customerId,
       assigned_to: ticket.assignedTo,

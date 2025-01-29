@@ -21,6 +21,7 @@ export default defineConfig({
     baseUrl: 'http://localhost:5173',
     specPattern: 'cypress/e2e/**/*.cy.{js,jsx}',
     supportFile: 'cypress/support/e2e.js',
+    experimentalRunAllSpecs: true,
     setupNodeEvents(on, config) {
       // Add task for logging
       on('task', {
