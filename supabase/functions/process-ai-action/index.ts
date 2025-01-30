@@ -1,8 +1,15 @@
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
-import { ChatOpenAI } from 'https://esm.sh/langchain@0.0.197/chat_models/openai';
-import { PromptTemplate } from 'https://esm.sh/langchain@0.0.197/prompts';
-import { JsonOutputFunctionsParser } from 'https://esm.sh/langchain@0.0.197/output_parsers';
+import { serve } from 'https://deno.land/std/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js';
+import { ChatOpenAI } from 'https://esm.sh/@langchain/openai';
+import { PromptTemplate } from 'https://esm.sh/@langchain/core/prompts';
+import { JsonOutputFunctionsParser } from 'https://esm.sh/@langchain/core/output_parsers';
+
+// CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 // Initialize Supabase client
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -101,6 +108,11 @@ async function findCustomerTickets(customerName: string) {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
   try {
     const { input_text, user_id } = await req.json();
 
@@ -124,8 +136,8 @@ serve(async (req) => {
 
     const result = await openai
       .bind({
-        functions: [functionSchema],
-        function_call: { name: 'process_service_rep_action' }
+      functions: [functionSchema],
+      function_call: { name: 'process_service_rep_action' }
       })
       .call([prompt])
       .then(outputParser.parse);
@@ -133,10 +145,10 @@ serve(async (req) => {
     // Find relevant ticket
     const tickets = await findCustomerTickets(result.customer_name);
     if (!tickets.length) {
-      return new Response(
-        JSON.stringify({
+    return new Response(
+      JSON.stringify({
           error: `No recent tickets found for customer: ${result.customer_name}`
-        }),
+      }),
         { status: 404 }
       );
     }
@@ -196,14 +208,26 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify(aiAction),
-      { status: 200 }
+      { 
+        status: 200,
+        headers: { 
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      }
     );
 
   } catch (error) {
     console.error('Error processing AI action:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      }
     );
   }
 }); 

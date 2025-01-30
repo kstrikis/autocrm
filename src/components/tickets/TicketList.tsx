@@ -13,60 +13,77 @@ import { Loader2 } from 'lucide-react';
 import { logger } from '@/lib/logger';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
+import type { Database } from '@/lib/database.types';
+
+type TicketWithRelations = Database['public']['Tables']['tickets']['Row'] & {
+  customer: {
+    full_name: string;
+  } | null;
+  assigned_to_user: {
+    full_name: string;
+  } | null;
+};
 
 interface TicketListProps {
-  role: 'customer' | 'service_rep' | 'admin';
+  role: Database['public']['Enums']['user_role'];
 }
 
-const supabase = createClient(
+const supabase = createClient<Database>(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
-export function TicketList({ role }: TicketListProps) {
-  const [tickets, setTickets] = useState<any[]>([]);
+export function TicketList({ role }: TicketListProps): JSX.Element {
+  logger.methodEntry('TicketList');
+
+  const [tickets, setTickets] = useState<TicketWithRelations[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
 
-  logger.methodEntry('TicketList.render');
+  const fetchTickets = async (): Promise<void> => {
+    logger.methodEntry('TicketList.fetchTickets');
+    try {
+      let query = supabase
+        .from('tickets')
+        .select(`
+          *,
+          customer:user_profiles!tickets_customer_id_fkey(full_name),
+          assigned_to_user:user_profiles!tickets_assigned_to_fkey(full_name)
+        `)
+        .order('created_at', { ascending: false });
+
+      // Filter based on role
+      if (role === 'customer' && user?.id) {
+        query = query.eq('customer_id', user.id);
+      } else if (role === 'service_rep' && user?.id) {
+        // Show both assigned and unassigned tickets
+        query = query.or(`assigned_to.is.null,assigned_to.eq.${user.id}`);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      setTickets(data as TicketWithRelations[] || []);
+    } catch (error) {
+      logger.error('Error fetching tickets:', { error: error instanceof Error ? error.message : String(error) });
+    } finally {
+      setIsLoading(false);
+    }
+    logger.methodExit('TicketList.fetchTickets');
+  };
 
   useEffect(() => {
-    const fetchTickets = async () => {
-      logger.methodEntry('TicketList.fetchTickets');
+    void (async (): Promise<void> => {
       try {
-        let query = supabase
-          .from('tickets')
-          .select(`
-            *,
-            customer:customer_id(full_name),
-            assigned_to_user:assigned_to(full_name)
-          `)
-          .order('created_at', { ascending: false });
-
-        // Filter based on role
-        if (role === 'customer') {
-          query = query.eq('customer_id', user?.id);
-        } else if (role === 'service_rep') {
-          query = query.eq('assigned_to', user?.id);
-        }
-
-        const { data, error } = await query;
-
-        if (error) throw error;
-        setTickets(data || []);
+        await fetchTickets();
       } catch (error) {
-        logger.error('Error fetching tickets:', error);
-      } finally {
-        setIsLoading(false);
+        logger.error('Error in initial fetchTickets:', { error: error instanceof Error ? error.message : String(error) });
       }
-      logger.methodExit('TicketList.fetchTickets');
-    };
-
-    fetchTickets();
+    })();
 
     // Subscribe to changes
-    const channel = supabase
-      .channel('tickets_changes')
+    const subscription = supabase
+      .channel('tickets')
       .on(
         'postgres_changes',
         {
@@ -74,19 +91,33 @@ export function TicketList({ role }: TicketListProps) {
           schema: 'public',
           table: 'tickets',
         },
-        () => {
-          fetchTickets();
+        (payload): void => {
+          logger.info('Received real-time update for tickets:', payload);
+          void (async (): Promise<void> => {
+            try {
+              await fetchTickets();
+            } catch (error) {
+              logger.error('Error in subscription fetchTickets:', { error: error instanceof Error ? error.message : String(error) });
+            }
+          })();
         }
-      )
-      .subscribe();
+      );
 
-    return () => {
-      channel.unsubscribe();
+    void (async (): Promise<void> => {
+      try {
+        await subscription.subscribe();
+      } catch (error) {
+        logger.error('Error subscribing to tickets:', { error: error instanceof Error ? error.message : String(error) });
+      }
+    })();
+
+    return (): void => {
+      void subscription.unsubscribe();
     };
   }, [role, user?.id]);
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: 'default' | 'destructive' | 'outline' | 'secondary', label: string }> = {
+  const getStatusBadge = (status: Database['public']['Enums']['ticket_status']): JSX.Element => {
+    const variants: Record<Database['public']['Enums']['ticket_status'], { variant: 'default' | 'destructive' | 'outline' | 'secondary', label: string }> = {
       new: { variant: 'secondary', label: 'New' },
       open: { variant: 'default', label: 'Open' },
       pending_customer: { variant: 'outline', label: 'Pending Customer' },
@@ -95,20 +126,22 @@ export function TicketList({ role }: TicketListProps) {
       closed: { variant: 'destructive', label: 'Closed' }
     };
 
-    const { variant, label } = variants[status] || { variant: 'secondary', label: status };
-    return <Badge variant={variant}>{label}</Badge>;
+    return <Badge variant={variants[status].variant}>{variants[status].label}</Badge>;
   };
 
-  const getPriorityBadge = (priority: string) => {
-    const variants: Record<string, { variant: 'default' | 'destructive' | 'outline' | 'secondary', label: string }> = {
+  const getPriorityBadge = (priority: Database['public']['Enums']['ticket_priority']): JSX.Element => {
+    const variants: Record<Database['public']['Enums']['ticket_priority'], { variant: 'default' | 'destructive' | 'outline' | 'secondary', label: string }> = {
       low: { variant: 'secondary', label: 'Low' },
       medium: { variant: 'outline', label: 'Medium' },
       high: { variant: 'default', label: 'High' },
       urgent: { variant: 'destructive', label: 'Urgent' }
     };
 
-    const { variant, label } = variants[priority] || { variant: 'secondary', label: priority };
-    return <Badge variant={variant}>{label}</Badge>;
+    return <Badge variant={variants[priority].variant}>{variants[priority].label}</Badge>;
+  };
+
+  const formatDate = (date: string): string => {
+    return formatDistanceToNow(new Date(date), { addSuffix: true });
   };
 
   if (isLoading) {
@@ -119,32 +152,34 @@ export function TicketList({ role }: TicketListProps) {
     );
   }
 
-  logger.methodExit('TicketList.render');
+  logger.methodExit('TicketList');
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Title</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Priority</TableHead>
-          <TableHead>Customer</TableHead>
-          <TableHead>Assigned To</TableHead>
-          <TableHead>Created</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {tickets.map((ticket) => (
-          <TableRow key={ticket.id}>
-            <TableCell>{ticket.title}</TableCell>
-            <TableCell>{getStatusBadge(ticket.status)}</TableCell>
-            <TableCell>{getPriorityBadge(ticket.priority)}</TableCell>
-            <TableCell>{ticket.customer?.full_name}</TableCell>
-            <TableCell>{ticket.assigned_to_user?.full_name || 'Unassigned'}</TableCell>
-            <TableCell>{formatDistanceToNow(new Date(ticket.created_at), { addSuffix: true })}</TableCell>
+    <div className="space-y-4">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Title</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Priority</TableHead>
+            <TableHead>Customer</TableHead>
+            <TableHead>Assigned To</TableHead>
+            <TableHead>Created</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {tickets.map((ticket) => (
+            <TableRow key={ticket.id}>
+              <TableCell>{ticket.title}</TableCell>
+              <TableCell>{getStatusBadge(ticket.status)}</TableCell>
+              <TableCell>{getPriorityBadge(ticket.priority)}</TableCell>
+              <TableCell>{ticket.customer?.full_name}</TableCell>
+              <TableCell>{ticket.assigned_to_user?.full_name || 'Unassigned'}</TableCell>
+              <TableCell>{formatDate(ticket.created_at)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 } 

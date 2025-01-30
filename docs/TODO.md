@@ -62,7 +62,7 @@ Here's the restructured implementation plan based on your requirements and insig
 ---
 
 ### 3. Ticket Conversations
-- [ ] **Messages Table Migration** [DB]  
+- [x] **Messages Table Migration** [DB]  
   Create `ticket_messages` with:  
   - RLS for participant visibility  
   - Composite index on (ticket_id, created_at)  

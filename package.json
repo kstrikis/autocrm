@@ -21,6 +21,7 @@
     "test:e2e": "start-server-and-test dev http://localhost:5173 'cypress run'",
     "test:component": "ELECTRON_ENABLE_LOGGING=1 cypress run --component",
     "test:service-rep": "ELECTRON_ENABLE_LOGGING=1 cypress run --spec 'cypress/e2e/service-rep-access.cy.js'",
+    "test:ai": "ELECTRON_ENABLE_LOGGING=1 start-server-and-test 'npm run dev:with-functions' http://localhost:5173 'cypress run --spec cypress/e2e/010-test-ai-function.cy.js'",
     "pretest": "npm run build",
     "test": "npm run test:component && npm run test:e2e",
     "seed:serve:local": "supabase functions serve seed-users --env-file ./supabase/functions/seed-users/.env.local",
@@ -28,7 +29,9 @@
     "seed:deploy": "supabase functions deploy seed-users",
     "seed:run:local": "source .env && curl -i --location --request POST \"http://localhost:54321/functions/v1/seed-users\" --header \"Authorization: Bearer ${SEED_ADMIN_TOKEN}\" --header \"Content-Type: application/json\"",
     "seed:run:prod": "source .env && curl -i -L -X POST \"${SUPABASE_URL}/functions/v1/seed-users\" -H \"Authorization: Bearer ${SEED_ADMIN_TOKEN}\" -H \"Content-Type: application/json\"",
-    "cypress:env": "tsx scripts/create-cypress-env.ts"
+    "cypress:env": "tsx scripts/create-cypress-env.ts",
+    "functions:serve": "supabase functions serve --no-verify-jwt",
+    "dev:with-functions": "concurrently \"npm run dev\" \"npm run functions:serve\""
   },
   "dependencies": {
     "@aws-amplify/backend-graphql": "^0.3.2",

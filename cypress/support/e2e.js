@@ -464,16 +464,16 @@ Cypress.Commands.add('seedTestTickets', (tickets) => {
   return cy.then(() => {
     // Validate all tickets first
     tickets.forEach((ticket, index) => {
-      cy.pushToLog(`validating ticket ${index + 1}/${tickets.length}`);
-
+    cy.pushToLog(`validating ticket ${index + 1}/${tickets.length}`);
+    
       // Type checking
       if (typeof ticket.customerId !== 'string') {
         const error = `Invalid customerId type: ${typeof ticket.customerId}`;
         cy.pushToLog(`validation failed: ${error}`);
         cy.popBuffer();
         throw new Error(error);
-      }
-
+    }
+    
       // Required fields check
       const requiredFields = ['title', 'description', 'customerId', 'status', 'priority'];
       const missing = requiredFields.filter(f => !ticket[f]);
@@ -505,13 +505,13 @@ Cypress.Commands.add('seedTestTickets', (tickets) => {
 
     // Process tickets for database
     const processed = tickets.map(ticket => ({
-      title: ticket.title,
-      description: ticket.description,
+          title: ticket.title,
+          description: ticket.description,
       status: ticket.status,
       priority: ticket.priority,
-      customer_id: ticket.customerId,
+          customer_id: ticket.customerId,
       assigned_to: ticket.assignedTo,
-      tags: ticket.tags || [],
+          tags: ticket.tags || [],
       metadata: ticket.metadata || {},
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -530,7 +530,7 @@ Cypress.Commands.add('seedTestTickets', (tickets) => {
         cy.popBuffer();
         throw error;
       }
-      
+
       cy.pushToLog(`inserted ${processed.length} tickets`);
       cy.popBuffer();
     });

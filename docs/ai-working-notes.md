@@ -1,42 +1,32 @@
 # AI Working Notes
 
 ## Latest Changes
+- Enhanced TypeScript types and error handling across components
+- Improved real-time subscription handling in AIActionsDashboard and TicketList
+- Added test AI functionality in ServiceRepDashboard
+- Updated audio processing in AIInput with better error handling
+- Added proper CORS headers and error handling in process-ai-action Edge Function
+- Improved toast notifications with better structure and feedback
+- Added concurrent function serving capability
+- Updated dependencies to latest versions
 
-### AI Assistant Feature Implementation
-- Added AI assistant for service representatives
-- Implemented natural language processing for ticket updates
-- Added voice input support with OpenAI Whisper
-- Created AI actions dashboard for oversight
-- Added user preferences for AI features
+## Dependencies
+- OpenAI API
+- Supabase
+- LangChain (temporarily removed)
+- React components from shadcn/ui
 
-### Database Changes
-- Created ai_actions table with RLS policies
-- Added AI preferences to user_profiles
-- Added status update function for AI actions
+## Environment Setup
+Required environment variables:
+- OPENAI_API_KEY
+- SUPABASE_URL
+- SUPABASE_SERVICE_ROLE_KEY
+- SUPABASE_ANON_KEY
 
-### Component Updates
-- Added AIInput component with voice support
-- Added AIActionsDashboard for action management
-- Updated ServiceRepDashboard with AI tabs
-- Added real-time updates for AI actions
-
-### Test Results
-- Auth tests: 6/6 passing
-- Customer access: 1/1 passing
-- Service rep access: 1/1 passing
-- Admin access: 1/1 passing
-- Admin user management: 4/4 passing
-- Ticket creation: 3/3 passing
-- Ticket details: 3/3 passing
-- Ticket conversations: 1/1 passing
-- AI assistant: 4/4 passing
-
-### Next Steps
-- Add more sophisticated AI action interpretation
-- Implement undo/redo for AI actions
-- Add bulk action approval
-- Add AI action analytics
-- Consider adding AI-powered ticket categorization
+## Testing Notes
+- Run tests with `npm run test:ai`
+- Ensure Edge Functions server is running
+- Check Cypress screenshots for failures
 
 ## Previous Notes
 
@@ -172,3 +162,82 @@
 5. AI processing in Edge Functions
 6. Default to internal notes for safety
 7. Require approval by default
+
+# AI Assistant Implementation Notes
+
+## Current Structure
+
+### Components
+- Edge Function (`process-ai-action`)
+  - Handles AI processing using OpenAI/LangChain
+  - CORS enabled for local development
+  - Validates service rep permissions
+  - Creates AI action records
+
+- Frontend Components
+  - Test input in ServiceRepDashboard
+  - Toast notifications for feedback
+  - Data-test attributes for testing
+
+### Data Model
+- `ai_actions` table
+  - Stores processed actions
+  - Links to tickets and users
+  - Tracks approval status
+
+### Testing
+- End-to-end test suite (010-test-ai-function.cy.js)
+- Creates test users and tickets
+- Verifies basic functionality
+
+## Current Issues
+
+### Edge Function
+- Import errors with LangChain dependencies
+- Need to simplify for initial testing
+- Memory issues (exit 137)
+
+### Testing
+- Cypress command issues (createUser vs createAdminManagedUser)
+- Need to ensure proper test data cleanup
+- Better error handling needed
+
+## Next Steps
+
+1. Simplify Edge Function
+   - Remove LangChain temporarily
+   - Use direct OpenAI calls
+   - Implement basic logging
+
+2. Fix Test Infrastructure
+   - Update Cypress commands
+   - Improve error handling
+   - Add more detailed logging
+
+3. Improve Error Handling
+   - Better error messages
+   - Proper cleanup in tests
+   - Graceful failure handling
+
+4. Documentation
+   - Document test setup process
+   - Add API documentation
+   - Include example usage
+
+## Dependencies
+- OpenAI API
+- Supabase
+- LangChain (temporarily removed)
+- React components from shadcn/ui
+
+## Environment Setup
+Required environment variables:
+- OPENAI_API_KEY
+- SUPABASE_URL
+- SUPABASE_SERVICE_ROLE_KEY
+- SUPABASE_ANON_KEY
+
+## Testing Notes
+- Run tests with `npm run test:ai`
+- Ensure Edge Functions server is running
+- Check Cypress screenshots for failures

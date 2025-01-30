@@ -46,61 +46,40 @@ type AIAction = {
   ticket_id: string;
 };
 
-export function AIActionsDashboard() {
+export function AIActionsDashboard(): JSX.Element {
+  logger.methodEntry('AIActionsDashboard');
+
   const [actions, setActions] = useState<AIAction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
-  logger.methodEntry('AIActionsDashboard.render');
+  const fetchActions = async (): Promise<void> => {
+    logger.methodEntry('AIActionsDashboard.fetchActions');
+    try {
+      const { data, error } = await supabase
+        .from('ai_actions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
 
-  useEffect(() => {
-    const fetchActions = async () => {
-      logger.methodEntry('AIActionsDashboard.fetchActions');
-      try {
-        const { data, error } = await supabase
-          .from('ai_actions')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(50);
+      if (error) throw error;
+      setActions(data || []);
+    } catch (error) {
+      logger.error('Error fetching AI actions:', { error: error instanceof Error ? error.message : String(error) });
+      toast({
+        title: "Error",
+        description: "Failed to load AI actions",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+    logger.methodExit('AIActionsDashboard.fetchActions');
+  };
 
-        if (error) throw error;
-        setActions(data || []);
-      } catch (error) {
-        logger.error('Error fetching AI actions:', error);
-        toast.error('Failed to load AI actions');
-      } finally {
-        setIsLoading(false);
-      }
-      logger.methodExit('AIActionsDashboard.fetchActions');
-    };
-
-    fetchActions();
-
-    // Subscribe to real-time updates
-    const channel = supabase
-      .channel('ai_actions_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'ai_actions',
-        },
-        (payload) => {
-          logger.info('Received real-time update for AI actions:', payload);
-          fetchActions();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      channel.unsubscribe();
-    };
-  }, [supabase]);
-
-  const handleAction = async (actionId: string, approve: boolean) => {
+  const handleAction = async (actionId: string, approve: boolean): Promise<void> => {
     logger.methodEntry('AIActionsDashboard.handleAction');
     setIsProcessing(true);
 
@@ -158,7 +137,10 @@ export function AIActionsDashboard() {
           new_status: 'executed'
         });
 
-        toast.success('Action executed successfully');
+        toast({
+          title: "Success",
+          description: "Action executed successfully"
+        });
       } else {
         // Reject the action
         const { error } = await supabase.rpc('update_ai_action_status', {
@@ -167,17 +149,24 @@ export function AIActionsDashboard() {
         });
 
         if (error) throw error;
-        toast.success('Action rejected');
+        toast({
+          title: "Success",
+          description: "Action rejected"
+        });
       }
     } catch (error) {
-      logger.error('Error handling AI action:', error);
-      toast.error('Failed to process action');
+      logger.error('Error handling AI action:', { error: error instanceof Error ? error.message : String(error) });
+      toast({
+        title: "Error",
+        description: "Failed to process action",
+        variant: "destructive"
+      });
 
       // Update status to failed
       await supabase.rpc('update_ai_action_status', {
         action_id: actionId,
         new_status: 'failed',
-        error_msg: error.message
+        error_msg: error instanceof Error ? error.message : String(error)
       });
     } finally {
       setIsProcessing(false);
@@ -185,7 +174,51 @@ export function AIActionsDashboard() {
     }
   };
 
-  const getStatusBadge = (status: AIAction['status']) => {
+  useEffect(() => {
+    void (async (): Promise<void> => {
+      try {
+        await fetchActions();
+      } catch (error) {
+        logger.error('Error in initial fetchActions:', { error: error instanceof Error ? error.message : String(error) });
+      }
+    })();
+
+    // Subscribe to real-time updates
+    const subscription = supabase
+      .channel('ai_actions')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ai_actions',
+        },
+        (payload): void => {
+          logger.info('Received real-time update for AI actions:', payload);
+          void (async (): Promise<void> => {
+            try {
+              await fetchActions();
+            } catch (error) {
+              logger.error('Error in subscription fetchActions:', { error: error instanceof Error ? error.message : String(error) });
+            }
+          })();
+        }
+      );
+
+    void (async (): Promise<void> => {
+      try {
+        await subscription.subscribe();
+      } catch (error) {
+        logger.error('Error subscribing to AI actions:', { error: error instanceof Error ? error.message : String(error) });
+      }
+    })();
+
+    return (): void => {
+      void subscription.unsubscribe();
+    };
+  }, []);
+
+  const getStatusBadge = (status: AIAction['status']): JSX.Element => {
     const variants: Record<AIAction['status'], { variant: 'default' | 'destructive' | 'outline' | 'secondary', label: string }> = {
       pending: { variant: 'secondary', label: 'Pending' },
       approved: { variant: 'outline', label: 'Approved' },
@@ -194,8 +227,7 @@ export function AIActionsDashboard() {
       failed: { variant: 'destructive', label: 'Failed' }
     };
 
-    const { variant, label } = variants[status];
-    return <Badge variant={variant}>{label}</Badge>;
+    return <Badge variant={variants[status].variant}>{variants[status].label}</Badge>;
   };
 
   if (isLoading) {
@@ -206,7 +238,7 @@ export function AIActionsDashboard() {
     );
   }
 
-  logger.methodExit('AIActionsDashboard.render');
+  logger.methodExit('AIActionsDashboard');
 
   return (
     <Card>
@@ -272,7 +304,7 @@ export function AIActionsDashboard() {
                     <div className="flex gap-2">
                       <Button
                         size="sm"
-                        onClick={() => handleAction(action.id, true)}
+                        onClick={() => void handleAction(action.id, true)}
                         disabled={isProcessing}
                       >
                         <Check className="h-4 w-4" />
@@ -280,7 +312,7 @@ export function AIActionsDashboard() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleAction(action.id, false)}
+                        onClick={() => void handleAction(action.id, false)}
                         disabled={isProcessing}
                       >
                         <X className="h-4 w-4" />

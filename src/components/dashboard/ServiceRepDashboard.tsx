@@ -1,47 +1,126 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AIInput } from '@/components/ai/AIInput';
-import { AIActionsDashboard } from '@/components/ai/AIActionsDashboard';
-import { TicketList } from '@/components/tickets/TicketList';
-import { logger } from '@/lib/logger';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2, Send } from 'lucide-react';
+import { logger } from '@/lib/logger';
+import { useAuth } from '@/contexts/AuthContext';
+import { createClient } from '@supabase/supabase-js';
+import { AIInput } from '../ai/AIInput';
+import { AIActionsDashboard } from '../ai/AIActionsDashboard';
+import { TicketList } from '../tickets/TicketList';
 
-export function ServiceRepDashboard() {
-  logger.methodEntry('ServiceRepDashboard.render');
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
+
+export function ServiceRepDashboard(): JSX.Element {
+  logger.methodEntry('ServiceRepDashboard');
+
+  const [testInput, setTestInput] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  const handleTestSubmit = async (): Promise<void> => {
+    if (!testInput.trim() || isProcessing) return;
+
+    logger.methodEntry('ServiceRepDashboard.handleTestSubmit');
+    setIsProcessing(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('test-ai-action', {
+        body: {
+          input_text: testInput.trim(),
+          user_id: user?.id
+        }
+      });
+
+      if (error) throw error;
+
+      logger.info('Test AI action response:', { data });
+
+      setTestInput('');
+      toast({
+        title: "Success",
+        description: "Test input processed successfully"
+      });
+
+    } catch (error) {
+      logger.error('Error processing test input:', { error: (error as Error).message });
+      toast({
+        title: "Error",
+        description: "Failed to process test input. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+      logger.methodExit('ServiceRepDashboard.handleTestSubmit');
+    }
+  };
+
+  logger.methodExit('ServiceRepDashboard');
 
   return (
-    <div className="container mx-auto py-6 space-y-8">
-      {/* AI Assistant Section */}
+    <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>
-            Use the AI assistant to quickly add notes, update ticket status, or manage tags
-          </CardDescription>
+          <CardTitle>AI Assistant (Test)</CardTitle>
+          <CardDescription>Test the AI assistant functionality</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <Textarea
+              data-test="test-ai-input"
+              placeholder="Type a test message..."
+              value={testInput}
+              onChange={(e) => setTestInput(e.target.value)}
+              className="min-h-[100px]"
+              disabled={isProcessing}
+            />
+            <div className="flex justify-end">
+              <Button
+                data-test="test-ai-submit"
+                onClick={handleTestSubmit}
+                disabled={!testInput.trim() || isProcessing}
+              >
+                {isProcessing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="mr-2 h-4 w-4" />
+                )}
+                Test Process
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>AI Assistant</CardTitle>
+          <CardDescription>Let AI help you manage customer interactions</CardDescription>
         </CardHeader>
         <CardContent>
           <AIInput />
         </CardContent>
       </Card>
 
-      {/* Main Content Tabs */}
-      <div className="grid grid-cols-1 gap-6">
-        <div className="col-span-1">
-          <Tabs defaultValue="tickets">
-            <TabsList>
-              <TabsTrigger value="tickets">Active Tickets</TabsTrigger>
-              <TabsTrigger value="actions">AI Actions History</TabsTrigger>
-            </TabsList>
-            <TabsContent value="tickets" className="space-y-4">
-              <TicketList role="service_rep" />
-            </TabsContent>
-            <TabsContent value="actions" className="space-y-4">
-              <AIActionsDashboard />
-            </TabsContent>
-          </Tabs>
-        </div>
-      </div>
+      <Tabs defaultValue="tickets">
+        <TabsList>
+          <TabsTrigger value="tickets">Active Tickets</TabsTrigger>
+          <TabsTrigger value="ai_actions">AI Actions History</TabsTrigger>
+        </TabsList>
+        <TabsContent value="tickets">
+          <TicketList role="service_rep" />
+        </TabsContent>
+        <TabsContent value="ai_actions">
+          <AIActionsDashboard />
+        </TabsContent>
+      </Tabs>
     </div>
   );
-
-  logger.methodExit('ServiceRepDashboard.render');
 } 
