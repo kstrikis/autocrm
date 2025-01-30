@@ -1,6 +1,11 @@
 # AI Working Notes
 
 ## Latest Changes
+- Added Supabase Edge Runtime type definitions to test-ai-action Edge Function
+- Fixed CORS headers and error handling in test-ai-action Edge Function
+- Improved tracing setup with LangChain and LangSmith
+- All tests passing except for 009-ai-assistant.cy.js (needs login command fix)
+- Added proper logging and error handling in Edge Function
 - Enhanced TypeScript types and error handling across components
 - Improved real-time subscription handling in AIActionsDashboard and TicketList
 - Added test AI functionality in ServiceRepDashboard
