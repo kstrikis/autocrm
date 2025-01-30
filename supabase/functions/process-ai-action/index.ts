@@ -1,29 +1,14 @@
-import { serve } from 'https://deno.land/std/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js';
-import { ChatOpenAI } from 'https://esm.sh/@langchain/openai';
-import { PromptTemplate } from 'https://esm.sh/@langchain/core/prompts';
-import { JsonOutputFunctionsParser } from 'https://esm.sh/@langchain/core/output_parsers';
+// Setup type definitions for built-in Supabase Runtime APIs
+import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 
-// CORS headers
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { serve } from "jsr:@std/http@^0.224.0"
+import { createClient } from 'npm:@supabase/supabase-js'
+import { ChatOpenAI } from 'npm:@langchain/openai'
+import { ChatPromptTemplate } from 'npm:@langchain/core/prompts'
+import { Client } from 'npm:langsmith'
+import { JsonOutputFunctionsParser } from 'npm:langchain/output_parsers'
 
-// Initialize Supabase client
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-// Initialize OpenAI
-const openai = new ChatOpenAI({
-  openAIApiKey: Deno.env.get('OPENAI_API_KEY')!,
-  modelName: 'gpt-4-turbo-preview',
-  temperature: 0,
-});
-
-// Define function schema for OpenAI
+// Define function schema for OpenAI first (before using it in model initialization)
 const functionSchema = {
   name: 'process_service_rep_action',
   description: 'Process a service representative\'s action on a ticket',
@@ -67,24 +52,77 @@ const functionSchema = {
   },
 };
 
-const promptTemplate = PromptTemplate.fromTemplate(`
-You are an AI assistant helping service representatives manage tickets in an equipment repair CRM system.
-Analyze the following input from a service representative and extract the relevant information:
+// Configure LangSmith for tracing
+const client = new Client({
+  apiKey: Deno.env.get("LANGCHAIN_API_KEY"),
+  endpoint: Deno.env.get("LANGCHAIN_ENDPOINT") || "https://api.smith.langchain.com",
+});
 
-Input: {input}
+// Get project name from env
+const projectName = Deno.env.get("LANGCHAIN_PROJECT") || "autocrm";
 
-Based on the input:
-1. Identify the customer name
-2. Determine if this should be a customer-visible note (default to internal unless clearly meant for customer communication)
-3. Extract any status changes or tags that should be added/removed
-4. Format the note content professionally
+// Get allowed origins based on environment
+const getAllowedOrigins = () => {
+  const origins = ['https://autocrm.kriss.cc'];
+  
+  // Allow localhost origins in development
+  if (Deno.env.get('ENVIRONMENT') !== 'production') {
+    origins.push(
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+      'http://localhost:54321',
+      'http://127.0.0.1:54321'
+    );
+  }
+  
+  return origins;
+};
+
+// CORS headers - we'll validate origin in the request handler
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*', // We'll set this dynamically based on the request
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// Initialize Supabase client
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+// Initialize LangChain model with tracing enabled
+const model = new ChatOpenAI({
+  openAIApiKey: Deno.env.get('OPENAI_API_KEY'),
+  temperature: 0,
+  modelName: 'gpt-4-turbo-preview',
+  configuration: {
+    baseOptions: {
+      headers: {
+        "Langchain-Project": projectName,
+        "Langchain-Trace-V2": "true"
+      }
+    }
+  }
+});
+
+// Create prompt template for service rep actions
+const prompt = ChatPromptTemplate.fromMessages([
+  ["system", `You are an AI assistant helping service representatives manage tickets in an equipment repair CRM system.
+Your task is to analyze the service representative's input and extract relevant information about actions to take.
+
+You should:
+1. Identify the customer name mentioned
+2. Determine if any notes should be added (and if they should be customer-visible)
+3. Detect any status changes needed
+4. Identify any tags that should be added or removed
 
 Remember:
 - Keep notes professional and clear
 - Default to internal notes unless clearly meant for customer communication
 - Status changes should be explicit or clearly implied
-- Tags should be relevant to equipment/repair context
-`);
+- Tags should be relevant to equipment/repair context`],
+  ["human", "{input}"]
+]);
 
 async function findCustomerTickets(customerName: string) {
   const { data: customers, error: customerError } = await supabase
@@ -108,9 +146,24 @@ async function findCustomerTickets(customerName: string) {
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('Origin') || '';
+  const allowedOrigins = getAllowedOrigins();
+  
+  // Set the actual origin in the CORS headers if it's allowed
+  const responseHeaders = {
+    ...corsHeaders,
+    'Access-Control-Allow-Origin': allowedOrigins.includes(origin) ? origin : '',
+    'Content-Type': 'application/json'
+  };
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok', { 
+      headers: {
+        ...responseHeaders,
+        'Content-Type': 'text/plain'
+      }
+    });
   }
 
   try {
@@ -126,28 +179,44 @@ serve(async (req) => {
     if (userError || userProfile?.role !== 'service_rep') {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
-        { status: 403 }
+        { 
+          status: 403,
+          headers: responseHeaders
+        }
       );
     }
 
     // Process with LangChain
-    const prompt = await promptTemplate.format({ input: input_text });
-    const outputParser = new JsonOutputFunctionsParser();
+    const formattedPrompt = await prompt.formatMessages({
+      input: input_text
+    });
 
-    const result = await openai
-      .bind({
+    // Run the model with function calling and tracing metadata
+    const result = await model.invoke(formattedPrompt, {
       functions: [functionSchema],
-      function_call: { name: 'process_service_rep_action' }
-      })
-      .call([prompt])
-      .then(outputParser.parse);
+      function_call: { name: 'process_service_rep_action' },
+      metadata: {
+        userId: user_id,
+        timestamp: new Date().toISOString(),
+        projectName: projectName
+      },
+      tags: ["process-ai-action", "edge-function"]
+    });
+
+    // Extract the function call result
+    if (!result.additional_kwargs?.function_call?.arguments) {
+      throw new Error('No function call result received from AI');
+    }
+
+    // Parse the function arguments
+    const parsedResult = JSON.parse(result.additional_kwargs.function_call.arguments);
 
     // Find relevant ticket
-    const tickets = await findCustomerTickets(result.customer_name);
+    const tickets = await findCustomerTickets(parsedResult.customer_name);
     if (!tickets.length) {
     return new Response(
       JSON.stringify({
-          error: `No recent tickets found for customer: ${result.customer_name}`
+          error: `No recent tickets found for customer: ${parsedResult.customer_name}`
       }),
         { status: 404 }
       );
@@ -160,8 +229,8 @@ serve(async (req) => {
         user_id,
         ticket_id: tickets[0].id,
         input_text,
-        action_type: result.action_type,
-        interpreted_action: result,
+        action_type: parsedResult.action_type,
+        interpreted_action: parsedResult,
         requires_approval: userProfile.ai_preferences?.requireApproval ?? true
       })
       .select()
@@ -172,27 +241,27 @@ serve(async (req) => {
     // If no approval required, execute immediately
     if (!aiAction.requires_approval) {
       // Execute action based on type
-      switch (result.action_type) {
+      switch (parsedResult.action_type) {
         case 'add_note':
           await supabase.from('ticket_messages').insert({
             ticket_id: tickets[0].id,
             sender_id: user_id,
-            content: result.note_content,
-            is_internal: !result.is_customer_visible
+            content: parsedResult.note_content,
+            is_internal: !parsedResult.is_customer_visible
           });
           break;
         case 'update_status':
-          if (result.status_update) {
+          if (parsedResult.status_update) {
             await supabase
               .from('tickets')
-              .update({ status: result.status_update })
+              .update({ status: parsedResult.status_update })
               .eq('id', tickets[0].id);
           }
           break;
         case 'update_tags':
           const currentTags = new Set(tickets[0].tags || []);
-          result.tags_to_remove?.forEach(tag => currentTags.delete(tag));
-          result.tags_to_add?.forEach(tag => currentTags.add(tag));
+          parsedResult.tags_to_remove?.forEach(tag => currentTags.delete(tag));
+          parsedResult.tags_to_add?.forEach(tag => currentTags.add(tag));
           await supabase
             .from('tickets')
             .update({ tags: Array.from(currentTags) })
@@ -210,10 +279,7 @@ serve(async (req) => {
       JSON.stringify(aiAction),
       { 
         status: 200,
-        headers: { 
-          'Content-Type': 'application/json',
-          ...corsHeaders
-        }
+        headers: responseHeaders
       }
     );
 
@@ -223,10 +289,7 @@ serve(async (req) => {
       JSON.stringify({ error: error.message }),
       { 
         status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders
-        }
+        headers: responseHeaders
       }
     );
   }

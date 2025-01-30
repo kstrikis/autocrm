@@ -115,19 +115,22 @@ export function AIInput(): JSX.Element {
     chunksRef.current = [];
 
     try {
-      const formData = new FormData();
-      formData.append('file', audioBlob);
-
       setIsProcessing(true);
-      const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
-        },
-        body: formData
+      const { data, error } = await supabase.functions.invoke('transcribe-audio', {
+        body: {
+          audio_base64: await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const base64 = (reader.result as string).split(',')[1];
+              resolve(base64);
+            };
+            reader.readAsDataURL(audioBlob);
+          })
+        }
       });
 
-      const data = await response.json();
+      if (error) throw error;
+
       if (data.text) {
         setInputText(data.text);
       }
