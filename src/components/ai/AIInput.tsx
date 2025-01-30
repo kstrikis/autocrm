@@ -120,7 +120,7 @@ export function AIInput(): JSX.Element {
         body: {
           audio_base64: await new Promise<string>((resolve) => {
             const reader = new FileReader();
-            reader.onloadend = () => {
+            reader.onloadend = (): void => {
               const base64 = (reader.result as string).split(',')[1];
               resolve(base64);
             };

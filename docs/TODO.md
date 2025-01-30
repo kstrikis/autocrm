@@ -148,6 +148,47 @@ Here's the restructured implementation plan based on your requirements and insig
 
 ---
 
+### 7. AI Assistant System
+- [ ] **AI Actions Schema Migration** [DB]  
+  Create tables for:  
+  - `ai_preferences` JSONB in user_profiles  
+  - `ai_actions` with status tracking  
+  - Action type enums and constraints  
+  - RLS for service rep access
+
+- [ ] **Process AI Action Function** [Edge]  
+  Implement with:  
+  - LangChain context gathering  
+  - Action determination logic  
+  - Permission validation  
+  - Structured JSON output
+
+- [ ] **Execute AI Action Function** [Edge]  
+  Build with:  
+  - Preference-based automation  
+  - Action-specific handlers  
+  - Status update broadcasts  
+  - Error recovery patterns
+
+- [ ] **AI Actions Dashboard** [UI]  
+  Create with:  
+  - Real-time action history  
+  - Approval interface  
+  - Status indicators  
+  - Error feedback
+
+- [ ] **Voice Input Enhancement** [Edge][UI]  
+  Implement:  
+  - Name recognition hints  
+  - Command pattern matching  
+  - Error correction feedback  
+  - Transcription quality logging
+
+- [ ] **E2E Test: AI Assistant Flow**  
+  Voice command → Action proposal → Approval → Execution → Verification
+
+---
+
 ### Critical Path Validation
 - [ ] **E2E Test: Ticket Lifecycle**  
   Customer submit → ServiceRep response → Resolution → Survey

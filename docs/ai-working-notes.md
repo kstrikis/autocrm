@@ -14,6 +14,13 @@
 - Improved toast notifications with better structure and feedback
 - Added concurrent function serving capability
 - Updated dependencies to latest versions
+- Added detailed AI Assistant implementation plan
+- Created AI Assistant tasks in TODO.md
+- Fixed TypeScript return type in AIInput component
+- Added voice transcription improvements plan
+- Designed data model for AI actions and preferences
+- Planned out Edge Functions architecture
+- Added security and performance considerations
 
 ## Dependencies
 - OpenAI API
@@ -262,3 +269,175 @@ Required environment variables:
     pronunciation_guide: "Ee-vah"
   }
   ```
+
+## AI Assistant Implementation Plan
+
+### Overview
+The AI Assistant will help service representatives perform common actions through natural language requests, with configurable automation levels and approval workflows.
+
+### Flow
+1. **Input Processing**
+   - Service rep inputs request (text/voice)
+   - Request sent to process-ai-action Edge Function
+   - Input stored with metadata (rep ID, timestamp, input method)
+
+2. **Context Gathering**
+   - Edge Function fetches:
+     - All users and their roles
+     - All tickets and their current states
+     - Service rep's automation preferences
+     - Available actions and their requirements
+
+3. **Action Determination (LangChain)**
+   - LLM analyzes request with context
+   - Determines appropriate action(s)
+   - Validates permissions and feasibility
+   - Generates structured JSON response
+
+4. **Action Storage**
+   - Store in `ai_actions` table:
+     - Original request
+     - Proposed action(s) as JSON
+     - Current status
+     - Metadata (timestamps, rep ID, etc.)
+
+5. **Action Execution**
+   - Triggered by new `ai_actions` record
+   - Checks rep's automation preferences
+   - If auto-approved: executes immediately
+   - If manual: waits for approval
+   - Updates action status
+
+6. **History & UI**
+   - Real-time updates in AI Actions table
+   - Manual approval button if needed
+   - Status indicators
+   - Execution results
+
+### Available Actions
+1. **Ticket Management**
+   - Add note to ticket
+   - Update ticket status
+   - Change ticket priority
+   - Assign ticket to rep
+   - Transfer ticket between reps
+   - Set due date
+   - Mark for follow-up
+
+2. **Tag Management**
+   - Add tags
+   - Remove tags
+   - Create new tags
+   - Merge similar tags
+
+3. **Customer Interaction**
+   - Schedule callback
+   - Send email template
+   - Set customer preferences
+   - Update contact info
+
+4. **Knowledge Base**
+   - Link relevant articles
+   - Suggest article creation
+   - Update article tags
+   - Mark article for review
+
+5. **Workflow Automation**
+   - Create ticket template
+   - Set up automated responses
+   - Configure notification rules
+   - Create ticket dependencies
+
+### Data Model Updates
+
+```sql
+-- Service rep preferences
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS
+  ai_preferences jsonb DEFAULT '{
+    "auto_approve_actions": false,
+    "allowed_actions": ["add_note", "update_status", "add_tags"],
+    "notification_preferences": {
+      "on_action_proposed": true,
+      "on_action_executed": true,
+      "on_action_failed": true
+    }
+  }'::jsonb;
+
+-- AI Actions table
+CREATE TABLE ai_actions (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  service_rep_id uuid REFERENCES user_profiles(id),
+  original_request text NOT NULL,
+  input_method text NOT NULL DEFAULT 'text',
+  proposed_actions jsonb NOT NULL,
+  status text NOT NULL DEFAULT 'pending',
+  execution_results jsonb,
+  created_at timestamptz DEFAULT now(),
+  executed_at timestamptz,
+  error_message text,
+  requires_approval boolean DEFAULT true,
+  approved_by uuid REFERENCES user_profiles(id),
+  approved_at timestamptz
+);
+
+-- Action types enum
+CREATE TYPE action_type AS ENUM (
+  'add_note',
+  'update_status',
+  'update_priority',
+  'assign_ticket',
+  'transfer_ticket',
+  'set_due_date',
+  'add_tags',
+  'remove_tags',
+  'schedule_callback',
+  'send_email',
+  'update_customer',
+  'link_article',
+  'create_template'
+);
+```
+
+### Edge Functions Needed
+1. `process-ai-action`
+   - Main entry point
+   - Handles input processing
+   - Calls LangChain/OpenAI
+   - Creates action records
+
+2. `execute-ai-action`
+   - Triggered by new actions
+   - Handles actual execution
+   - Updates status and results
+   - Manages approvals
+
+3. Action-specific functions:
+   - `add-ticket-note`
+   - `update-ticket-status`
+   - `assign-ticket`
+   - etc.
+
+### Next Steps
+1. [ ] Create database migrations for new schema
+2. [ ] Implement basic action processing
+3. [ ] Set up LangChain with proper prompts
+4. [ ] Create execution framework
+5. [ ] Build approval UI
+6. [ ] Add real-time updates
+7. [ ] Implement voice improvements
+8. [ ] Add automated testing
+
+### Security Considerations
+- Strict validation of proposed actions
+- Role-based access control
+- Audit logging
+- Rate limiting
+- Error handling
+- Sensitive data protection
+
+### Performance Optimization
+- Caching of context data
+- Batch processing where possible
+- Efficient database queries
+- Real-time update batching
+- Background job processing
