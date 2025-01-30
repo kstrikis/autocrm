@@ -246,3 +246,19 @@ Required environment variables:
 - Run tests with `npm run test:ai`
 - Ensure Edge Functions server is running
 - Check Cypress screenshots for failures
+
+## Voice Transcription Improvements
+- Consider adding a "pronunciation guide" field to user profiles
+- This would help Whisper STT better recognize names that are commonly misheard (e.g., "Eva" being heard as "Ava")
+- Could be used in both the STT prompt and displayed in the UI when needed
+- Example implementation:
+  ```typescript
+  // In user_profiles table
+  pronunciation_guide?: string  // Optional field for phonetic hints
+  
+  // Example data
+  {
+    full_name: "Eva Admin",
+    pronunciation_guide: "Ee-vah"
+  }
+  ```
