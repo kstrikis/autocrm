@@ -42,7 +42,8 @@ export function AIInput(): JSX.Element {
       setInputText('');
       toast({
         title: "Success",
-        description: "Input processed successfully"
+        description: data.parsed_result || "Input processed successfully",
+        duration: 5000
       });
 
       // If action requires approval, show info toast

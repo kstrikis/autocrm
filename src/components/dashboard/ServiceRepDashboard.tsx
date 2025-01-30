@@ -46,7 +46,8 @@ export function ServiceRepDashboard(): JSX.Element {
       setTestInput('');
       toast({
         title: "Success",
-        description: "Test input processed successfully"
+        description: `${data.message}\n${data.parsed_result}`,
+        duration: 5000 // Give users more time to read the result
       });
 
     } catch (error) {
