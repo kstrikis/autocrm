@@ -21,7 +21,7 @@ export const DashboardLayout: React.FC = () => {
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <div className="w-64 bg-white shadow-lg">
+      <div className="w-48 bg-white shadow-lg">
         <div className="p-4">
           <h1 className="text-xl font-bold">AutoCRM</h1>
         </div>
@@ -32,7 +32,7 @@ export const DashboardLayout: React.FC = () => {
               isActive('/dashboard') ? 'bg-blue-50 text-blue-600' : 'text-gray-600'
             }`}
           >
-            <span className="mr-3">
+            <span className="mr-2">
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M4 6H20M4 12H20M4 18H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
               </svg>

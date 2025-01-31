@@ -9,11 +9,14 @@ import { SignUpForm } from '@/components/auth/SignUpForm';
 import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/lib/logger';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { useToast } from '@/hooks/use-toast';
 
 export function AuthPage(): React.ReactElement {
   logger.methodEntry('AuthPage');
   const { user, loading, signIn } = useAuth();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
+  const [seeding, setSeeding] = useState(false);
 
   // Sample account buttons for demo purposes
   const handleSampleLogin = async (type: 'customer' | 'service_rep' | 'admin'): Promise<void> => {
@@ -32,6 +35,43 @@ export function AuthPage(): React.ReactElement {
       void error;
     }
     logger.methodExit('AuthPage.handleSampleLogin');
+  };
+
+  const handleSeedData = async () => {
+    logger.methodEntry('handleSeedData');
+    try {
+      setSeeding(true);
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/seed-test-data`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        toast({
+          title: 'Success',
+          description: 'Demo data seeded successfully'
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: `Failed to seed data: ${result.error}`
+        });
+      }
+    } catch (error) {
+      logger.error('Error seeding data:', error instanceof Error ? error.message : String(error));
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to seed demo data'
+      });
+    } finally {
+      setSeeding(false);
+      logger.methodExit('handleSeedData');
+    }
   };
 
   if (loading) {
@@ -63,8 +103,8 @@ export function AuthPage(): React.ReactElement {
             </TabsContent>
           </Tabs>
         </CardContent>
-        <CardFooter className="flex flex-col gap-2">
-          <div className="text-sm text-gray-500 text-center mb-2">
+        <CardFooter className="flex flex-col gap-4">
+          <div className="text-sm text-gray-500 text-center">
             Try our demo accounts:
           </div>
           <div className="flex flex-wrap gap-2 w-full">
@@ -91,6 +131,17 @@ export function AuthPage(): React.ReactElement {
               data-testid="demo-admin-button"
             >
               Demo Admin
+            </Button>
+          </div>
+          <div className="w-full">
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={handleSeedData}
+              disabled={seeding}
+              data-testid="seed-data-button"
+            >
+              {seeding ? 'Loading Demo Data...' : 'Reset Demo Data'}
             </Button>
           </div>
         </CardFooter>

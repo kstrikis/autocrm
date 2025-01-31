@@ -2,7 +2,7 @@
 ALTER TABLE public.user_profiles 
 ADD COLUMN IF NOT EXISTS ai_preferences jsonb DEFAULT jsonb_build_object(
   'requireApproval', true,
-  'enableVoiceInput', false,
+  'enableVoiceInput', true,
   'defaultNoteVisibility', 'internal'
 );
 
@@ -13,7 +13,7 @@ COMMENT ON COLUMN public.user_profiles.ai_preferences IS E'@graphql({"name": "ai
 UPDATE public.user_profiles 
 SET ai_preferences = jsonb_build_object(
   'requireApproval', true,
-  'enableVoiceInput', false,
+  'enableVoiceInput', true,
   'defaultNoteVisibility', 'internal'
 )
 WHERE ai_preferences IS NULL;

@@ -146,6 +146,19 @@ Available actions:
 3. update_tags: Add or remove tags
 4. assign_ticket: Assign ticket to a service rep
 
+NOTE VISIBILITY RULES:
+- The service rep's default preference for note visibility is: {default_note_visibility}
+- Use this default UNLESS there are clear indicators in the input
+- Override the default for customer-visible notes when:
+  * Input mentions "let them know", "tell the customer", "inform them", etc.
+  * The note is clearly meant as a response or message to the customer
+  * Input suggests customer communication like "reply", "respond", "message"
+- Override the default for internal notes when:
+  * Input mentions "internal", "for me", "for our records", "team note", etc.
+  * The note contains internal jargon, team discussions, or private observations
+  * Input suggests private documentation like "make a note for myself"
+- Always respect explicit visibility requests over defaults
+
 IMPORTANT ASSIGNMENT RULES:
 - When you see words like "assign", "give me", "take", or similar assignment requests:
   * ALWAYS use the assign_ticket action type
@@ -170,7 +183,6 @@ Guidelines:
 - You can suggest multiple actions from a single input
 - Each action must reference a specific ticket
 - Keep notes professional and clear
-- Default to internal notes unless clearly meant for customer communication
 - Status changes should be explicit or clearly implied
 - Tags should be relevant to equipment/repair context
 - Assign lower confidence scores when context is ambiguous
@@ -261,6 +273,10 @@ serve(async (req) => {
       );
     }
 
+    // Get user's note visibility preference
+    const defaultNoteVisibility = userProfile.ai_preferences?.defaultNoteVisibility || 'internal';
+    console.log('Default note visibility:', defaultNoteVisibility);
+
     // Gather context for the AI - join tickets with customer information
     console.log('Fetching recent tickets for context');
     const { data: tickets, error: ticketsError } = await supabase
@@ -312,7 +328,8 @@ serve(async (req) => {
     const formattedPrompt = await prompt.formatMessages({
       input: input_text,
       tickets: JSON.stringify(formattedTickets),
-      user_id: user_id
+      user_id: user_id,
+      default_note_visibility: defaultNoteVisibility
     });
     console.log('Formatted prompt:', formattedPrompt);
 

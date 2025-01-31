@@ -89,8 +89,7 @@ function getHumanReadableAction(action: AIAction): string {
         interpretedAction: action.interpreted_action
       });
       const assignToUser = action.assign_to_user?.full_name || 'Unknown User';
-      const customerName = action.ticket?.customer?.name || 'Unknown Customer';
-      return `Assign ${customerName}'s ticket to ${assignToUser}`;
+      return `Assign to ${assignToUser}`;
     default:
       return 'Unknown action';
   }
@@ -300,16 +299,26 @@ export function AIActionsDashboard(): JSX.Element {
                   {formatDistanceToNow(new Date(action.created_at), { addSuffix: true })}
                 </TableCell>
                 <TableCell className="max-w-[200px]">
-                  <div className="text-xs text-muted-foreground line-clamp-2" title={action.input_text}>
-                    {action.input_text}
-                  </div>
+                  <HoverCard openDelay={0} closeDelay={0}>
+                    <HoverCardTrigger>
+                      <div className="text-xs text-muted-foreground line-clamp-3 cursor-help">
+                        {action.input_text}
+                      </div>
+                    </HoverCardTrigger>
+                    <HoverCardContent className="w-80">
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-semibold">Original Input</h4>
+                        <p className="text-sm">{action.input_text}</p>
+                      </div>
+                    </HoverCardContent>
+                  </HoverCard>
                 </TableCell>
                 <TableCell>
                   <HoverCard openDelay={0} closeDelay={0}>
                     <HoverCardTrigger>
-                      <span className="cursor-help underline decoration-dotted">
+                      <div className="cursor-help underline decoration-dotted max-w-[200px] line-clamp-3">
                         {action.ticket?.title || 'Unknown Ticket'}
-                      </span>
+                      </div>
                     </HoverCardTrigger>
                     <HoverCardContent className="w-80">
                       <div className="space-y-2">
@@ -351,9 +360,19 @@ export function AIActionsDashboard(): JSX.Element {
                   </HoverCard>
                 </TableCell>
                 <TableCell>
-                  <div className="text-sm text-muted-foreground">
-                    {getHumanReadableAction(action)}
-                  </div>
+                  <HoverCard openDelay={0} closeDelay={0}>
+                    <HoverCardTrigger>
+                      <div className="text-sm text-muted-foreground max-w-[400px] line-clamp-3 cursor-help">
+                        {getHumanReadableAction(action)}
+                      </div>
+                    </HoverCardTrigger>
+                    <HoverCardContent className="w-80">
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-semibold">Full Action Details</h4>
+                        <p className="text-sm">{getHumanReadableAction(action)}</p>
+                      </div>
+                    </HoverCardContent>
+                  </HoverCard>
                 </TableCell>
                 <TableCell>
                   <Badge variant={action.status === 'pending' ? 'secondary' : 'default'}>
@@ -362,7 +381,7 @@ export function AIActionsDashboard(): JSX.Element {
                 </TableCell>
                 <TableCell>
                   {action.status === 'pending' && (
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2">
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
