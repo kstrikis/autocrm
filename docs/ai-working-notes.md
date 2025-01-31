@@ -492,3 +492,11 @@ CREATE TYPE action_type AS ENUM (
 - Need to verify RLS policies for new execute function
 - Consider adding batch approval option
 - Monitor AI interpretation accuracy
+
+## 2024-02-06 - Edge Function Deployment and Database Reset Fix
+
+1. Successfully deployed `seed-test-data` Edge Function to project `ndxjncxvuqdsdhoakvrb`
+2. Fixed database reset permission errors:
+   - Updated Supabase CLI from v2.6.8 to v2.9.6
+   - This resolved the "must be owner of publication" errors during database resets
+   - The newer version handles publication permissions correctly
