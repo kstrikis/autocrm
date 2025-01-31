@@ -195,11 +195,32 @@ serve(async (req) => {
           break;
 
         case 'add_note':
-          // TODO: Implement note adding once we have the notes table
+          if (action.interpreted_action.note_content) {
+            const { error: noteError } = await supabase
+              .from('ticket_messages')
+              .insert({
+                ticket_id: action.ticket_id,
+                sender_id: user_id,
+                content: action.interpreted_action.note_content,
+                is_internal: !action.interpreted_action.is_customer_visible
+              });
+
+            if (noteError) throw noteError;
+
+            // Also update ticket status if provided
+            if (action.interpreted_action.status_update) {
+              const { error: statusError } = await supabase
+                .from('tickets')
+                .update({ status: action.interpreted_action.status_update })
+                .eq('id', action.ticket_id);
+
+              if (statusError) throw statusError;
+            }
+          }
           break;
 
         default:
-          throw new Error(`Unknown action type: ${action.action_type}`);
+          throw new Error(`Unsupported action type: ${action.action_type}`);
       }
 
       // Update action status to executed
@@ -256,4 +277,4 @@ serve(async (req) => {
       }
     );
   }
-}); 
+});

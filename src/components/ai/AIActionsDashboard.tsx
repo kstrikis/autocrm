@@ -189,21 +189,29 @@ export function AIActionsDashboard(): JSX.Element {
       const action = actions.find(a => a.id === actionId);
       if (!action) throw new Error('Action not found');
 
-      await supabase
-        .from('ai_actions')
-        .update({ 
-          status: approve ? 'approved' : 'rejected',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', actionId);
+      // Call execute-ai-action edge function
+      const { error: executeError } = await supabase.functions.invoke('execute-ai-action', {
+        body: {
+          action_id: actionId,
+          user_id: user?.id,
+          approve
+        }
+      });
+
+      if (executeError) throw executeError;
 
       await fetchActions();
 
       toast({
         title: "Success",
-        description: approve ? "Action approved" : "Action rejected"
+        description: approve ? "Action executed successfully" : "Action rejected"
       });
     } catch (error) {
+      logger.error('Error executing action:', { 
+        error: error instanceof Error ? error.message : String(error),
+        actionId,
+        approve
+      });
       toast({
         title: "Error",
         description: "Failed to process action",
@@ -316,9 +324,12 @@ export function AIActionsDashboard(): JSX.Element {
                 <TableCell>
                   <HoverCard openDelay={0} closeDelay={0}>
                     <HoverCardTrigger>
-                      <div className="cursor-help underline decoration-dotted max-w-[200px] line-clamp-3">
+                      <a 
+                        href={`/tickets/${action.ticket_id}`}
+                        className="cursor-pointer hover:text-primary underline decoration-dotted max-w-[200px] line-clamp-3"
+                      >
                         {action.ticket?.title || 'Unknown Ticket'}
-                      </div>
+                      </a>
                     </HoverCardTrigger>
                     <HoverCardContent className="w-80">
                       <div className="space-y-2">

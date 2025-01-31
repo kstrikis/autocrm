@@ -364,6 +364,9 @@ serve(async (req) => {
     for (const action of parsedResult.actions) {
       console.log('Processing action:', action);
 
+      const requiresApproval = userProfile.ai_preferences?.requireApproval ?? true;
+      console.log('Action requires approval:', requiresApproval);
+
       // Create the action record
       const { data: aiAction, error: actionError } = await supabase
         .from('ai_actions')
@@ -373,7 +376,7 @@ serve(async (req) => {
           input_text,
           action_type: action.action_type,
           interpreted_action: action.interpreted_action,
-          requires_approval: userProfile.ai_preferences?.requireApproval ?? true,
+          requires_approval: requiresApproval,
           status: 'pending'
         })
         .select()
@@ -386,6 +389,37 @@ serve(async (req) => {
 
       console.log('Created AI action:', aiAction);
       aiActions.push(aiAction);
+
+      // If approval is not required, execute the action immediately
+      if (!requiresApproval) {
+        console.log('Auto-executing action:', aiAction.id);
+        try {
+          const { error: executeError } = await fetch(
+            `${Deno.env.get('SUPABASE_URL')}/functions/v1/execute-ai-action`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+              },
+              body: JSON.stringify({
+                action_id: aiAction.id,
+                user_id,
+                approve: true
+              })
+            }
+          ).then(r => r.json());
+
+          if (executeError) {
+            console.error('Error auto-executing action:', executeError);
+            throw executeError;
+          }
+          console.log('Action auto-executed successfully');
+        } catch (error) {
+          console.error('Failed to auto-execute action:', error);
+          // We don't throw here because we want to continue processing other actions
+        }
+      }
     }
 
     // Ensure LangSmith traces are flushed

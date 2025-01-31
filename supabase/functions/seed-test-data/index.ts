@@ -727,16 +727,31 @@ async function seedTestData(supabase: any) {
     // Create AI actions
     console.log('Creating test AI actions...');
     for (const action of testAiActions) {
-      // Set the ticket IDs based on descriptions
+      // Get ticket ID based on action type and content
       let ticketId = '';
-      if (action.inputText.includes('Toyota forklift')) {
-        ticketId = ticketIds.get('Toyota 8FGU25 forklift hydraulic leak') || '';
-      } else if (action.inputText.includes('CAT 320')) {
-        ticketId = ticketIds.get('CAT excavator won\'t start') || '';
-      } else if (action.inputText.includes('CNC spindle')) {
-        ticketId = ticketIds.get('CNC machine spindle alignment error') || '';
-      } else if (action.inputText.includes('dock leveler')) {
-        ticketId = ticketIds.get('Dock leveler malfunction - Bay 3') || '';
+      
+      // Define ticket mappings with exact titles from testTickets
+      const ticketMappings = {
+        'Toyota 8FGU25 forklift hydraulic leak': ['Toyota forklift', 'hydraulic leak', 'forklift'],
+        'CAT excavator won\'t start': ['CAT 320', 'excavator', 'won\'t start'],
+        'CNC machine spindle alignment error': ['CNC spindle', 'spindle alignment', 'spindle issue'],
+        'Dock leveler malfunction - Bay 3': ['dock leveler', 'leveler', 'Bay 3']
+      };
+
+      // Find matching ticket
+      for (const [title, keywords] of Object.entries(ticketMappings)) {
+        if (keywords.some(keyword => 
+          action.inputText.toLowerCase().includes(keyword.toLowerCase()) ||
+          (action.interpretedAction.note_content || '').toLowerCase().includes(keyword.toLowerCase())
+        )) {
+          ticketId = ticketIds.get(title) || '';
+          if (ticketId) {
+            console.log(`Matched action to ticket: ${title} (ID: ${ticketId})`);
+          } else {
+            console.error(`Found matching title "${title}" but no corresponding ticket ID`);
+          }
+          break;
+        }
       }
 
       if (!ticketId) {
