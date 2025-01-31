@@ -347,75 +347,28 @@ serve(async (req) => {
     for (const action of parsedResult.actions) {
       console.log('Processing action:', action);
 
-      // For assignment actions, we need to update both the ticket and create an action record
-      if (action.action_type === 'assign_ticket') {
-        console.log('Processing assignment action');
-        const updatePromises = [];
+      // Create the action record
+      const { data: aiAction, error: actionError } = await supabase
+        .from('ai_actions')
+        .insert({
+          user_id,
+          ticket_id: action.ticket_id,
+          input_text,
+          action_type: action.action_type,
+          interpreted_action: action.interpreted_action,
+          requires_approval: userProfile.ai_preferences?.requireApproval ?? true,
+          status: 'pending'
+        })
+        .select()
+        .single();
 
-        // Update ticket assignment
-        if (action.interpreted_action.assign_to) {
-          console.log('Updating ticket assignment:', action.interpreted_action.assign_to);
-          updatePromises.push(
-            supabase
-              .from('tickets')
-              .update({ 
-                assigned_to: action.interpreted_action.assign_to
-              })
-              .eq('id', action.ticket_id)
-          );
-        }
-
-        // Create the action record
-        const { data: aiAction, error: actionError } = await supabase
-          .from('ai_actions')
-          .insert({
-            user_id,
-            ticket_id: action.ticket_id,
-            input_text,
-            action_type: action.action_type,
-            interpreted_action: action.interpreted_action,
-            requires_approval: userProfile.ai_preferences?.requireApproval ?? true
-          })
-          .select()
-          .single();
-
-        if (actionError) {
-          console.error('Error creating AI action:', actionError);
-          throw actionError;
-        }
-
-        // Wait for all updates to complete
-        const results = await Promise.all(updatePromises);
-        const errors = results.filter(r => r.error);
-        if (errors.length > 0) {
-          console.error('Errors updating ticket:', errors);
-          throw errors[0].error;
-        }
-
-        console.log('Created AI action with assignment:', aiAction);
-        aiActions.push(aiAction);
-      } else {
-        // Handle other action types as before
-        const { data: aiAction, error: actionError } = await supabase
-          .from('ai_actions')
-          .insert({
-            user_id,
-            ticket_id: action.ticket_id,
-            input_text,
-            action_type: action.action_type,
-            interpreted_action: action.interpreted_action,
-            requires_approval: userProfile.ai_preferences?.requireApproval ?? true
-          })
-          .select()
-          .single();
-
-        if (actionError) {
-          console.error('Error creating AI action:', actionError);
-          throw actionError;
-        }
-        console.log('Created AI action:', aiAction);
-        aiActions.push(aiAction);
+      if (actionError) {
+        console.error('Error creating AI action:', actionError);
+        throw actionError;
       }
+
+      console.log('Created AI action:', aiAction);
+      aiActions.push(aiAction);
     }
 
     // Ensure LangSmith traces are flushed

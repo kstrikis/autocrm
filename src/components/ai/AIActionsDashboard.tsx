@@ -15,6 +15,17 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from '@/components/ui/hover-card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Check, X, Loader2 } from 'lucide-react';
@@ -42,13 +53,45 @@ type AIAction = {
     assign_to?: string;
   };
   status: 'pending' | 'approved' | 'rejected' | 'executed' | 'failed';
-  error_message?: string;
+  error_message?: string | null;
   ticket_id: string;
-  ticket?: {
+  ticket: {
     title: string;
     status: string;
-  };
+    created_at: string;
+    description: string;
+    priority: string;
+    tags: string[];
+    customer: {
+      id: string;
+      name: string;
+    };
+    assigned_to: string | null;
+    assigned_user: {
+      id: string;
+      full_name: string;
+    } | null;
+  } | null;
 };
+
+function getHumanReadableAction(action: AIAction): string {
+  switch (action.action_type) {
+    case 'add_note':
+      return `Add ${action.interpreted_action.is_customer_visible ? 'customer-visible' : 'internal'} note: "${action.interpreted_action.note_content}"`;
+    case 'update_status':
+      return `Update status to: ${action.interpreted_action.status_update}`;
+    case 'update_tags':
+      const addTags = action.interpreted_action.tags_to_add?.join(', ') || '';
+      const removeTags = action.interpreted_action.tags_to_remove?.join(', ') || '';
+      return `Tags: ${addTags ? `+[${addTags}]` : ''} ${removeTags ? `-[${removeTags}]` : ''}`;
+    case 'assign_ticket':
+      const assignToUser = action.ticket?.assigned_user?.full_name || 'Unknown User';
+      const customerName = action.ticket?.customer?.name || 'Unknown Customer';
+      return `Assign ${customerName}'s ticket to ${assignToUser}`;
+    default:
+      return 'Unknown action';
+  }
+}
 
 export function AIActionsDashboard(): JSX.Element {
   logger.methodEntry('AIActionsDashboard');
@@ -76,8 +119,23 @@ export function AIActionsDashboard(): JSX.Element {
           error_message,
           ticket_id,
           ticket:tickets (
+            id,
             title,
-            status
+            status,
+            created_at,
+            description,
+            priority,
+            tags,
+            customer_id,
+            customer:user_profiles!tickets_customer_id_fkey (
+              id,
+              name:full_name
+            ),
+            assigned_to,
+            assigned_user:user_profiles!tickets_assigned_to_fkey (
+              id,
+              full_name
+            )
           )
         `)
         .eq('user_id', user?.id)
@@ -87,9 +145,43 @@ export function AIActionsDashboard(): JSX.Element {
         logger.error('Error fetching AI actions:', { error });
         throw error;
       }
+
+      logger.info('Raw data from database:', { rawData: data });
+
+      // Transform the data to match our expected types
+      const transformedData = (data || []).map(action => {
+        // Handle ticket being returned as an array
+        const ticketData = Array.isArray(action.ticket) ? action.ticket[0] : action.ticket;
+        
+        return {
+          ...action,
+          ticket: ticketData ? {
+            ...ticketData,
+            title: ticketData.title || 'Unknown Ticket',
+            status: ticketData.status || 'unknown',
+            created_at: ticketData.created_at || action.created_at,
+            description: ticketData.description || 'No description',
+            priority: ticketData.priority || 'medium',
+            tags: ticketData.tags || [],
+            customer: ticketData.customer || { id: '', name: 'Unknown Customer' },
+            assigned_to: ticketData.assigned_to,
+            assigned_user: ticketData.assigned_user || null
+          } : {
+            title: 'Unknown Ticket',
+            status: 'unknown',
+            created_at: action.created_at,
+            description: 'No description',
+            priority: 'medium',
+            tags: [],
+            customer: { id: '', name: 'Unknown Customer' },
+            assigned_to: null,
+            assigned_user: null
+          }
+        };
+      });
       
-      logger.info('Fetched AI actions:', { count: data?.length || 0, data });
-      setActions(data || []);
+      logger.info('Fetched and transformed AI actions:', { count: transformedData.length });
+      setActions(transformedData);
     } catch (error) {
       logger.error('Failed to load AI actions:', { error: error instanceof Error ? error.message : String(error) });
       toast({
@@ -202,9 +294,11 @@ export function AIActionsDashboard(): JSX.Element {
           <TableHeader>
             <TableRow>
               <TableHead>Time</TableHead>
+              <TableHead className="max-w-[200px]">Input</TableHead>
               <TableHead>Ticket</TableHead>
+              <TableHead>Customer</TableHead>
               <TableHead>Type</TableHead>
-              <TableHead>Input</TableHead>
+              <TableHead>Human Readable</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -215,17 +309,60 @@ export function AIActionsDashboard(): JSX.Element {
                 <TableCell>
                   {formatDistanceToNow(new Date(action.created_at), { addSuffix: true })}
                 </TableCell>
-                <TableCell>
-                  {action.ticket?.title || 'Unknown Ticket'}
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline">
-                    {action.action_type}
-                  </Badge>
-                </TableCell>
                 <TableCell className="max-w-[200px]">
-                  <div className="truncate" title={action.input_text}>
+                  <div className="text-xs text-muted-foreground line-clamp-2" title={action.input_text}>
                     {action.input_text}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <HoverCard openDelay={0} closeDelay={0}>
+                    <HoverCardTrigger>
+                      <span className="cursor-help underline decoration-dotted">
+                        {action.ticket?.title || 'Unknown Ticket'}
+                      </span>
+                    </HoverCardTrigger>
+                    <HoverCardContent className="w-80">
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-semibold">{action.ticket?.title}</h4>
+                        <div className="text-sm">
+                          <p><strong>Created:</strong> {action.ticket?.created_at ? format(new Date(action.ticket.created_at), 'PPp') : 'Unknown'}</p>
+                          <p><strong>Description:</strong> {action.ticket?.description || 'No description'}</p>
+                          <p><strong>Priority:</strong> {action.ticket?.priority || 'Not set'}</p>
+                          <p><strong>Status:</strong> {action.ticket?.status || 'Unknown'}</p>
+                          <p><strong>Tags:</strong> {action.ticket?.tags?.join(', ') || 'None'}</p>
+                        </div>
+                      </div>
+                    </HoverCardContent>
+                  </HoverCard>
+                </TableCell>
+                <TableCell>
+                  {action.ticket?.customer?.name || 'Unknown'}
+                </TableCell>
+                <TableCell>
+                  <HoverCard openDelay={0} closeDelay={0}>
+                    <HoverCardTrigger>
+                      <Badge variant="outline" className="cursor-help">
+                        {action.action_type}
+                      </Badge>
+                    </HoverCardTrigger>
+                    <HoverCardContent className="w-80">
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-semibold">Action Details</h4>
+                        <div className="text-sm">
+                          <p><strong>Human Readable:</strong></p>
+                          <p>{getHumanReadableAction(action)}</p>
+                          <p className="mt-2"><strong>Raw Action:</strong></p>
+                          <pre className="mt-1 rounded bg-slate-950 p-2 text-xs text-white">
+                            {JSON.stringify(action.interpreted_action, null, 2)}
+                          </pre>
+                        </div>
+                      </div>
+                    </HoverCardContent>
+                  </HoverCard>
+                </TableCell>
+                <TableCell>
+                  <div className="text-sm text-muted-foreground">
+                    {getHumanReadableAction(action)}
                   </div>
                 </TableCell>
                 <TableCell>
@@ -236,19 +373,37 @@ export function AIActionsDashboard(): JSX.Element {
                 <TableCell>
                   {action.status === 'pending' && (
                     <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={(): Promise<void> => handleAction(action.id, true)}
-                      >
-                        <Check className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={(): Promise<void> => handleAction(action.id, false)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              onClick={(): Promise<void> => handleAction(action.id, true)}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Approve action</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(): Promise<void> => handleAction(action.id, false)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Reject action</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                   )}
                 </TableCell>
