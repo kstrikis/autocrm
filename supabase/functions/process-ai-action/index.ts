@@ -8,48 +8,71 @@ import { ChatPromptTemplate } from 'npm:@langchain/core/prompts'
 import { Client } from 'npm:langsmith'
 import { JsonOutputFunctionsParser } from 'npm:langchain/output_parsers'
 
-// Define function schema for OpenAI first (before using it in model initialization)
+// Define function schema for OpenAI first
 const functionSchema = {
-  name: 'process_service_rep_action',
-  description: 'Process a service representative\'s action on a ticket',
+  name: 'interpret_service_rep_input',
+  description: 'Interpret service rep input and convert to structured actions',
   parameters: {
     type: 'object',
     properties: {
-      action_type: {
-        type: 'string',
-        enum: ['add_note', 'update_status', 'update_tags'],
-        description: 'The type of action to perform',
-      },
-      customer_name: {
-        type: 'string',
-        description: 'The name of the customer mentioned in the input',
-      },
-      note_content: {
-        type: 'string',
-        description: 'The content of the note to be added',
-      },
-      is_customer_visible: {
-        type: 'boolean',
-        description: 'Whether the note should be visible to the customer',
-      },
-      status_update: {
-        type: 'string',
-        enum: ['new', 'open', 'pending_customer', 'pending_internal', 'resolved', 'closed'],
-        description: 'The new status to set for the ticket',
-      },
-      tags_to_add: {
+      actions: {
         type: 'array',
-        items: { type: 'string' },
-        description: 'Tags to add to the ticket',
-      },
-      tags_to_remove: {
-        type: 'array',
-        items: { type: 'string' },
-        description: 'Tags to remove from the ticket',
-      },
+        items: {
+          type: 'object',
+          properties: {
+            action_type: {
+              type: 'string',
+              enum: ['add_note', 'update_status', 'update_tags', 'assign_ticket'],
+              description: 'Type of action to perform'
+            },
+            ticket_id: {
+              type: 'string',
+              pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+              description: 'UUID of the ticket to perform action on'
+            },
+            interpreted_action: {
+              type: 'object',
+              properties: {
+                note_content: {
+                  type: 'string',
+                  description: 'Content of the note to add'
+                },
+                is_customer_visible: {
+                  type: 'boolean',
+                  description: 'Whether the note should be visible to customers'
+                },
+                status_update: {
+                  type: 'string',
+                  description: 'New status to set for the ticket'
+                },
+                tags_to_add: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Tags to add to the ticket'
+                },
+                tags_to_remove: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Tags to remove from the ticket'
+                },
+                assign_to: {
+                  type: 'string',
+                  pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+                  description: 'UUID of the user to assign the ticket to'
+                }
+              }
+            },
+            confidence_score: {
+              type: 'number',
+              description: 'How confident the AI is about this interpretation (0-1)'
+            }
+          },
+          required: ['action_type', 'ticket_id', 'interpreted_action', 'confidence_score']
+        }
+      }
     },
-    required: ['action_type', 'customer_name'],
-  },
+    required: ['actions']
+  }
 };
 
 // Configure LangSmith for tracing
@@ -105,23 +128,63 @@ const model = new ChatOpenAI({
   }
 });
 
-// Create prompt template for service rep actions
+// Update the prompt template to reflect the new context structure
 const prompt = ChatPromptTemplate.fromMessages([
   ["system", `You are an AI assistant helping service representatives manage tickets in an equipment repair CRM system.
-Your task is to analyze the service representative's input and extract relevant information about actions to take.
+Your task is to analyze the service representative's input and suggest appropriate actions to take.
 
-You should:
-1. Identify the customer name mentioned
-2. Determine if any notes should be added (and if they should be customer-visible)
-3. Detect any status changes needed
-4. Identify any tags that should be added or removed
+You have access to recent tickets with their customer information. Each ticket includes:
+- Title and description
+- Current status and tags
+- Customer information (id, name, company)
+- Current assignment (assigned_to may be null)
+- Last update time
 
-Remember:
+Available actions:
+1. add_note: Add internal or customer-visible notes
+2. update_status: Change ticket status
+3. update_tags: Add or remove tags
+4. assign_ticket: Assign ticket to a service rep (IMPORTANT: Use this for ANY assignment request)
+
+IMPORTANT ASSIGNMENT RULES:
+- When you see words like "assign", "give me", "take", or similar assignment requests:
+  * ALWAYS use the assign_ticket action type
+  * For self-assignment requests (e.g. "give me", "I'll take"), set assign_to to the requesting service rep's ID ({user_id})
+  * For reassignment requests, verify the target user_id is provided
+  * Include a status update to 'open' if the ticket is new or unassigned
+  * Use a high confidence score (0.9+) for clear assignment requests
+- Examples of assignment requests:
+  * "assign me this ticket" -> assign_to: {user_id} (self-assignment)
+  * "give me that ticket" -> assign_to: {user_id} (self-assignment)
+  * "I'll take this one" -> assign_to: {user_id} (self-assignment)
+  * "assign the dark mode ticket to me" -> assign_to: {user_id} (self-assignment)
+  * "let me handle this" -> assign_to: {user_id} (self-assignment)
+
+For each action you suggest:
+1. Determine the specific ticket it applies to
+2. Identify the type of action needed (especially for assignments)
+3. Extract relevant details for that action type
+4. Assign a confidence score (0-1) for your interpretation
+
+Guidelines:
+- You can suggest multiple actions from a single input
+- Each action must reference a specific ticket
 - Keep notes professional and clear
 - Default to internal notes unless clearly meant for customer communication
 - Status changes should be explicit or clearly implied
-- Tags should be relevant to equipment/repair context`],
-  ["human", "{input}"]
+- Tags should be relevant to equipment/repair context
+- Assign lower confidence scores when context is ambiguous
+- When customer is referenced by first/last name only, match against customer names in tickets
+- For assignments, be aware that:
+  * ticket.customer.id is the customer who owns the ticket
+  * ticket.assigned_to is the current assignee (if any)
+  * {user_id} is the ID of the service rep making this request`],
+  ["human", `Context:
+Recent Tickets: {tickets}
+
+Service Rep Input: {input}
+
+Your user_id is: {user_id}`]
 ]);
 
 async function findCustomerTickets(customerName: string) {
@@ -146,8 +209,10 @@ async function findCustomerTickets(customerName: string) {
 }
 
 serve(async (req) => {
+  console.log('Starting process-ai-action function');
   const origin = req.headers.get('Origin') || '';
   const allowedOrigins = getAllowedOrigins();
+  console.log('Request origin:', origin, 'Allowed:', allowedOrigins.includes(origin));
   
   // Set the actual origin in the CORS headers if it's allowed
   const responseHeaders = {
@@ -158,6 +223,7 @@ serve(async (req) => {
 
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight request');
     return new Response('ok', { 
       headers: {
         ...responseHeaders,
@@ -168,15 +234,24 @@ serve(async (req) => {
 
   try {
     const { input_text, user_id } = await req.json();
+    console.log('Received request:', { input_text, user_id });
 
     // Validate user is a service rep
+    console.log('Validating service rep:', user_id);
     const { data: userProfile, error: userError } = await supabase
       .from('user_profiles')
       .select('*')
       .eq('id', user_id)
       .single();
 
-    if (userError || userProfile?.role !== 'service_rep') {
+    if (userError) {
+      console.error('User validation error:', userError);
+      throw userError;
+    }
+    console.log('User profile:', { role: userProfile.role, hasAiPrefs: !!userProfile.ai_preferences });
+
+    if (userProfile?.role !== 'service_rep') {
+      console.error('Unauthorized role:', userProfile?.role);
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { 
@@ -186,15 +261,66 @@ serve(async (req) => {
       );
     }
 
+    // Gather context for the AI - join tickets with customer information
+    console.log('Fetching recent tickets for context');
+    const { data: tickets, error: ticketsError } = await supabase
+      .from('tickets')
+      .select(`
+        id,
+        title,
+        description,
+        status,
+        tags,
+        created_at,
+        updated_at,
+        assigned_to,
+        customer:user_profiles!tickets_customer_id_fkey(
+          id,
+          full_name,
+          company
+        )
+      `)
+      .order('updated_at', { ascending: false })
+      .limit(20);
+
+    if (ticketsError) {
+      console.error('Error fetching tickets:', ticketsError);
+      throw ticketsError;
+    }
+    console.log(`Found ${tickets.length} recent tickets`);
+
+    // Format tickets for the LLM context
+    console.log('Formatting tickets for LLM');
+    const formattedTickets = tickets.map(ticket => ({
+      id: ticket.id,
+      title: ticket.title,
+      description: ticket.description,
+      status: ticket.status,
+      tags: ticket.tags,
+      assigned_to: ticket.assigned_to,
+      customer: {
+        id: ticket.customer.id,
+        name: ticket.customer.full_name,
+        company: ticket.customer.company
+      },
+      last_update: ticket.updated_at
+    }));
+    console.log('Formatted ticket sample:', formattedTickets[0]);
+
     // Process with LangChain
+    console.log('Preparing LangChain prompt');
     const formattedPrompt = await prompt.formatMessages({
-      input: input_text
+      input: input_text,
+      tickets: JSON.stringify(formattedTickets),
+      user_id: user_id
     });
+    console.log('Formatted prompt:', formattedPrompt);
 
     // Run the model with function calling and tracing metadata
+    console.log('Invoking LangChain model');
     const result = await model.invoke(formattedPrompt, {
       functions: [functionSchema],
-      function_call: { name: 'process_service_rep_action' },
+      function_call: { name: 'interpret_service_rep_input' },
       metadata: {
         userId: user_id,
         timestamp: new Date().toISOString(),
@@ -202,81 +328,104 @@ serve(async (req) => {
       },
       tags: ["process-ai-action", "edge-function"]
     });
+    console.log('LangChain result:', result);
 
     // Extract the function call result
     if (!result.additional_kwargs?.function_call?.arguments) {
+      console.error('No function call result in response:', result);
       throw new Error('No function call result received from AI');
     }
 
     // Parse the function arguments
+    console.log('Parsing AI response');
     const parsedResult = JSON.parse(result.additional_kwargs.function_call.arguments);
+    console.log('Parsed result:', parsedResult);
 
-    // Find relevant ticket
-    const tickets = await findCustomerTickets(parsedResult.customer_name);
-    if (!tickets.length) {
-    return new Response(
-      JSON.stringify({
-          error: `No recent tickets found for customer: ${parsedResult.customer_name}`
-      }),
-        { status: 404 }
-      );
-    }
+    // Create AI action records
+    console.log(`Creating ${parsedResult.actions.length} AI actions`);
+    const aiActions = [];
+    for (const action of parsedResult.actions) {
+      console.log('Processing action:', action);
 
-    // Create AI action record
-    const { data: aiAction, error: actionError } = await supabase
-      .from('ai_actions')
-      .insert({
-        user_id,
-        ticket_id: tickets[0].id,
-        input_text,
-        action_type: parsedResult.action_type,
-        interpreted_action: parsedResult,
-        requires_approval: userProfile.ai_preferences?.requireApproval ?? true
-      })
-      .select()
-      .single();
+      // For assignment actions, we need to update both the ticket and create an action record
+      if (action.action_type === 'assign_ticket') {
+        console.log('Processing assignment action');
+        const updatePromises = [];
 
-    if (actionError) throw actionError;
-
-    // If no approval required, execute immediately
-    if (!aiAction.requires_approval) {
-      // Execute action based on type
-      switch (parsedResult.action_type) {
-        case 'add_note':
-          await supabase.from('ticket_messages').insert({
-            ticket_id: tickets[0].id,
-            sender_id: user_id,
-            content: parsedResult.note_content,
-            is_internal: !parsedResult.is_customer_visible
-          });
-          break;
-        case 'update_status':
-          if (parsedResult.status_update) {
-            await supabase
+        // Update ticket assignment
+        if (action.interpreted_action.assign_to) {
+          console.log('Updating ticket assignment:', action.interpreted_action.assign_to);
+          updatePromises.push(
+            supabase
               .from('tickets')
-              .update({ status: parsedResult.status_update })
-              .eq('id', tickets[0].id);
-          }
-          break;
-        case 'update_tags':
-          const currentTags = new Set(tickets[0].tags || []);
-          parsedResult.tags_to_remove?.forEach(tag => currentTags.delete(tag));
-          parsedResult.tags_to_add?.forEach(tag => currentTags.add(tag));
-          await supabase
-            .from('tickets')
-            .update({ tags: Array.from(currentTags) })
-            .eq('id', tickets[0].id);
-          break;
-      }
+              .update({ 
+                assigned_to: action.interpreted_action.assign_to
+              })
+              .eq('id', action.ticket_id)
+          );
+        }
 
-      await supabase.rpc('update_ai_action_status', {
-        action_id: aiAction.id,
-        new_status: 'executed'
-      });
+        // Create the action record
+        const { data: aiAction, error: actionError } = await supabase
+          .from('ai_actions')
+          .insert({
+            user_id,
+            ticket_id: action.ticket_id,
+            input_text,
+            action_type: action.action_type,
+            interpreted_action: action.interpreted_action,
+            requires_approval: userProfile.ai_preferences?.requireApproval ?? true
+          })
+          .select()
+          .single();
+
+        if (actionError) {
+          console.error('Error creating AI action:', actionError);
+          throw actionError;
+        }
+
+        // Wait for all updates to complete
+        const results = await Promise.all(updatePromises);
+        const errors = results.filter(r => r.error);
+        if (errors.length > 0) {
+          console.error('Errors updating ticket:', errors);
+          throw errors[0].error;
+        }
+
+        console.log('Created AI action with assignment:', aiAction);
+        aiActions.push(aiAction);
+      } else {
+        // Handle other action types as before
+        const { data: aiAction, error: actionError } = await supabase
+          .from('ai_actions')
+          .insert({
+            user_id,
+            ticket_id: action.ticket_id,
+            input_text,
+            action_type: action.action_type,
+            interpreted_action: action.interpreted_action,
+            requires_approval: userProfile.ai_preferences?.requireApproval ?? true
+          })
+          .select()
+          .single();
+
+        if (actionError) {
+          console.error('Error creating AI action:', actionError);
+          throw actionError;
+        }
+        console.log('Created AI action:', aiAction);
+        aiActions.push(aiAction);
+      }
     }
 
+    // Ensure LangSmith traces are flushed
+    console.log('Flushing LangSmith traces');
+    await client.flush();
+    console.log('Traces flushed successfully');
+
+    console.log('Request completed successfully');
     return new Response(
-      JSON.stringify(aiAction),
+      JSON.stringify({ actions: aiActions }),
       { 
         status: 200,
         headers: responseHeaders
@@ -285,6 +434,26 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error processing AI action:', error);
+    console.error('Full error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      cause: error.cause
+    });
+    
+    // Ensure traces are flushed even on error
+    try {
+      console.log('Attempting to flush traces after error');
+      await client.flush();
+      console.log('Traces flushed successfully after error');
+    } catch (cleanupError) {
+      console.error('Error flushing traces:', {
+        name: cleanupError.name,
+        message: cleanupError.message,
+        stack: cleanupError.stack
+      });
+    }
+    
     return new Response(
       JSON.stringify({ error: error.message }),
       { 

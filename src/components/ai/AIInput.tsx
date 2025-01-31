@@ -24,15 +24,30 @@ export function AIInput(): JSX.Element {
   const { toast } = useToast();
 
   const handleSubmit = async (): Promise<void> => {
-    if (!inputText.trim() || isProcessing) return;
-
     logger.methodEntry('AIInput.handleSubmit');
+
+    // If already processing, don't do anything
+    if (isProcessing) return;
+
+    // Trim the input text
+    const trimmedInput = inputText.trim();
+
+    // If empty after trimming, show a toast and return
+    if (!trimmedInput) {
+      toast({
+        title: "Empty Input",
+        description: "Please enter some text to process.",
+        variant: "default"
+      });
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
       const { data, error } = await supabase.functions.invoke('process-ai-action', {
         body: {
-          input_text: inputText.trim(),
+          input_text: trimmedInput,
           user_id: user?.id
         }
       });
@@ -154,6 +169,7 @@ export function AIInput(): JSX.Element {
     <div className="space-y-2">
       <div className="flex gap-2">
         <Textarea
+          data-testid="ai-input-textarea"
           placeholder="Type your note or press the mic button to record..."
           value={inputText}
           onChange={(e): void => setInputText(e.target.value)}
@@ -171,8 +187,9 @@ export function AIInput(): JSX.Element {
           <Mic className={isRecording ? 'text-red-500' : ''} />
         </Button>
         <Button
+          data-testid="ai-input-process"
           onClick={(): Promise<void> => handleSubmit()}
-          disabled={!inputText.trim() || isProcessing}
+          disabled={isProcessing}
         >
           {isProcessing ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

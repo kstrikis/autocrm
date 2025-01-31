@@ -69,6 +69,29 @@ export function ServiceRepDashboard(): JSX.Element {
     <div className="space-y-4">
       <Card>
         <CardHeader>
+          <CardTitle>AI Assistant</CardTitle>
+          <CardDescription>Let AI help you manage customer interactions</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AIInput />
+        </CardContent>
+      </Card>
+
+      <Tabs defaultValue="ai_actions">
+        <TabsList>
+          <TabsTrigger value="tickets">Active Tickets</TabsTrigger>
+          <TabsTrigger value="ai_actions">AI Actions History</TabsTrigger>
+        </TabsList>
+        <TabsContent value="tickets">
+          <TicketList role="service_rep" />
+        </TabsContent>
+        <TabsContent value="ai_actions">
+          <AIActionsDashboard key="ai_actions" />
+        </TabsContent>
+      </Tabs>
+
+      <Card>
+        <CardHeader>
           <CardTitle>AI Assistant (Test)</CardTitle>
           <CardDescription>Test the AI assistant functionality</CardDescription>
         </CardHeader>
@@ -99,29 +122,6 @@ export function ServiceRepDashboard(): JSX.Element {
           </div>
         </CardContent>
       </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>AI Assistant</CardTitle>
-          <CardDescription>Let AI help you manage customer interactions</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AIInput />
-        </CardContent>
-      </Card>
-
-      <Tabs defaultValue="tickets">
-        <TabsList>
-          <TabsTrigger value="tickets">Active Tickets</TabsTrigger>
-          <TabsTrigger value="ai_actions">AI Actions History</TabsTrigger>
-        </TabsList>
-        <TabsContent value="tickets">
-          <TicketList role="service_rep" />
-        </TabsContent>
-        <TabsContent value="ai_actions">
-          <AIActionsDashboard />
-        </TabsContent>
-      </Tabs>
     </div>
   );
 } 

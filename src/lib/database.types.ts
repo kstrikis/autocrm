@@ -241,7 +241,7 @@ export interface Ticket extends Omit<DbTicket, 'created_at' | 'updated_at' | 're
   assignedTo: string | null;
 }
 
-export type AIActionType = 'add_note' | 'update_status' | 'update_tags';
+export type AIActionType = 'add_note' | 'update_status' | 'update_tags' | 'assign_ticket';
 export type AIActionStatus = 'pending' | 'approved' | 'rejected' | 'executed' | 'failed';
 
 export interface AIAction {

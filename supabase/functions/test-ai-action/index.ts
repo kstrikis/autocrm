@@ -70,6 +70,9 @@ serve(async (req) => {
 
     console.log('LangChain result:', result);
 
+    // Ensure LangSmith traces are flushed
+    await client.flush();
+
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -86,6 +89,14 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in test function:', error);
+
+    // Ensure traces are flushed even on error
+    try {
+      await client.flush();
+    } catch (cleanupError) {
+      console.error('Error flushing traces:', cleanupError);
+    }
+
     return new Response(
       JSON.stringify({ error: error.message }),
       { 

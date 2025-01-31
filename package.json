@@ -23,6 +23,7 @@
     "test:service-rep": "ELECTRON_ENABLE_LOGGING=1 cypress run --spec 'cypress/e2e/service-rep-access.cy.js'",
     "test:ai": "ELECTRON_ENABLE_LOGGING=1 start-server-and-test 'npm run dev:with-functions' http://localhost:5173 'cypress run --spec cypress/e2e/010-test-ai-function.cy.js'",
     "test:ai2": "ELECTRON_ENABLE_LOGGING=1 start-server-and-test 'npm run dev:with-functions' http://localhost:5173 'cypress run --spec cypress/e2e/011-process-ai-action.cy.js'",
+    "test:ai3": "ELECTRON_ENABLE_LOGGING=1 start-server-and-test 'npm run dev:with-functions' http://localhost:5173 'cypress run --spec cypress/e2e/012-ai-assistant-history.cy.js'",
     "pretest": "npm run build",
     "test": "npm run test:component && npm run test:e2e",
     "seed:serve:local": "supabase functions serve seed-users --env-file ./supabase/functions/seed-users/.env.local",
