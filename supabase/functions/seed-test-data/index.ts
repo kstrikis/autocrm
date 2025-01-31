@@ -1,4 +1,16 @@
-// Setup type definitions for built-in Supabase Runtime APIs
+/*
+  UPDATED SEED FILE
+
+  • Tickets that are referenced by tests where Carol only adds notes/status/tags will be pre‐assigned to Carol (service1).
+  • Tickets that require Carol to self‐assign (i.e. an assignment action in the test) are left unassigned.
+  • Also, “Hydraulic drill rig pressure loss” is split into two tickets:
+       – “Hydraulic drill rig pressure loss - assigned”  (for Test 21; assigned to Carol)
+       – “Hydraulic drill rig pressure loss - unassigned” (for Test 25; left unassigned)
+
+  The assignment field (assigned_to) is not stored as an email address but later is overridden 
+  with the service rep’s UUID after creation.
+*/
+
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from 'npm:@supabase/supabase-js'
 
@@ -137,7 +149,6 @@ const testCustomers = [
 
 // Service reps with different specialties
 const testServiceReps = [
-  // Original demo service reps from seed-users.ts
   {
     email: 'service1@example.com',
     password: 'Password123!',
@@ -158,7 +169,6 @@ const testServiceReps = [
       company: 'AutoCRM'
     }
   },
-  // Our new test service reps
   {
     email: 'frank.tech@example.com',
     password: 'Password123!',
@@ -195,266 +205,374 @@ const testAdmins = [
   }
 ];
 
-// 30 tickets with diverse issues and writing styles
+/*
+  Updated Tickets
+
+  For any test where Carol’s input does not include self-assignment, the intended ticket
+  must already be assigned to her. For tickets that are expected to be self-assigned, 
+  assigned_to is set to null.
+
+  The following allocation is used (by title):
+
+  Pre-assigned to Carol (service1):
+    • "Toyota 8FGU25 forklift hydraulic leak"                (Test 1)
+    • "CAT excavator won't start"                             (Test 2)
+    • "Dock leveler malfunction - Bay 3"                      (Test 4)
+    • "Electric pallet jack battery issues"                   (Test 5)
+    • "Bobcat skid steer tracks loose"                        (Test 6)
+    • "Low tire pressure on the reach stacker"                (Test 9)
+    • "John Deere combine harvester engine overheating"       (Test 10)
+    • "Metal detector calibration drift"                      (Test 11)
+    • "Shredder overload protection trips"                    (Test 13)
+    • "Magnetic separator belt misalignment"                  (Test 14)
+    • "Conveyor belt misalignment"                             (Test 15)
+    • "Irrigation pump pressure fluctuation"                  (Test 16)
+    • "Packaging line servo motor fault"                      (Test 18)
+    • "Robot arm calibration drift"                           (Test 20)
+    • "Hydraulic drill rig pressure loss - assigned"          (Test 21)
+    • "Preventive maintenance check"                          (Test 22)
+    • "Loading dock door sensor replacement"                  (Not referenced in tests, but assign to Carol)
+    • "Upgrade request for control system"                    (Test 23)
+    • "New equipment installation quote"                      (Test 24)
+
+  Self-assignment (initially unassigned):
+    • "CNC machine spindle alignment error"                  (Test 3)
+    • "Container spreader thing not locking properly"         (Test 7)
+    • "STS Crane #3 keeps losing power"                       (Test 8)
+    • "Pallet wrapper tension issues"                         (Test 12)
+    • "Grain auger bearing noise"                             (Test 17)
+    • "Automated storage retrieval system failure"            (Test 19)
+    • "Hydraulic drill rig pressure loss - unassigned"        (Test 25)
+*/
+
 const testTickets = [
-  // John's tickets (Warehouse) - formal, precise
+  // John's tickets (Warehouse)
   {
     customerId: 'john.warehouse@example.com',
     title: 'Toyota 8FGU25 forklift hydraulic leak',
     description: 'Our main warehouse forklift (Toyota 8FGU25, Serial #8FGU25-12345) is experiencing a significant hydraulic leak from the mast assembly. Fluid loss is approximately 200ml per shift. Need urgent repair as this is our primary loading equipment.',
     priority: 'high',
     status: 'new',
-    tags: ['forklift', 'hydraulic', 'leak', 'toyota']
+    tags: ['forklift', 'hydraulic', 'leak', 'toyota'],
+    // Pre-assigned to Carol
+    assigned_to: 'service1'  // placeholder; will be replaced with Carol’s UUID from serviceRepIds
   },
   {
     customerId: 'john.warehouse@example.com',
     title: 'Scheduled maintenance for Raymond Reach truck',
-    description: 'Requesting routine maintenance for our Raymond Reach truck (Model 7500). Unit has logged 2000 hours since last service. No immediate issues but due for inspection.',
+    description: 'Routine maintenance for our Raymond Reach truck (Model 7500).',
     priority: 'medium',
     status: 'new',
-    tags: ['reach-truck', 'maintenance', 'raymond']
+    tags: ['reach-truck', 'maintenance', 'raymond'],
+    // Default not referenced – assign to Carol
+    assigned_to: 'service1'
   },
 
-  // Sarah's tickets (Construction) - brief, urgent
+  // Sarah's tickets (Construction)
   {
     customerId: 'sarah.construction@example.com',
     title: 'CAT excavator won\'t start',
-    description: 'CAT 320 won\'t start. No response when turning key. Batteries seem ok. Need ASAP - holding up site work!!',
+    description: 'CAT 320 won\'t start. Batteries seem ok. Need ASAP - holding up site work!!',
     priority: 'urgent',
     status: 'new',
-    tags: ['excavator', 'caterpillar', 'electrical']
+    tags: ['excavator', 'caterpillar', 'electrical'],
+    // Pre-assigned to Carol
+    assigned_to: 'service1'
   },
   {
     customerId: 'sarah.construction@example.com',
     title: 'Bobcat skid steer tracks loose',
-    description: 'Tracks getting loose on Bobcat S650. Making clacking noise. Getting worse past 2 days.',
+    description: 'Tracks getting loose on Bobcat S650. Making clacking noise.',
     priority: 'high',
     status: 'new',
-    tags: ['bobcat', 'tracks', 'noise']
+    tags: ['bobcat', 'tracks', 'noise'],
+    // Pre-assigned to Carol
+    assigned_to: 'service1'
   },
 
-  // Mike's tickets (Logistics) - detailed, systematic
+  // Mike's tickets (Logistics)
   {
     customerId: 'mike.logistics@example.com',
     title: 'Dock leveler malfunction - Bay 3',
-    description: 'Loading dock leveler in Bay 3 (Blue Giant model XDS) not maintaining level position. Issue occurs under load. Troubleshooting steps completed:\n1. Verified hydraulic pressure\n2. Checked limit switches\n3. Inspected lip hinge\nProblem persists. Need technical inspection.',
+    description: 'Dock leveler in Bay 3 (Blue Giant model XDS) not maintaining level position.',
     priority: 'high',
     status: 'new',
-    tags: ['dock-leveler', 'hydraulic', 'blue-giant']
+    tags: ['dock-leveler', 'hydraulic', 'blue-giant'],
+    // Pre-assigned to Carol
+    assigned_to: 'service1'
   },
   {
     customerId: 'mike.logistics@example.com',
     title: 'Electric pallet jack battery issues',
-    description: 'Crown PE4500 electric pallet jack showing reduced runtime after charging. Battery indicators:\n- Full charge reading\n- Runtime: 4hrs (normally 7-8hrs)\n- No visible corrosion\nCharger diagnostic shows normal function.',
+    description: 'Crown PE4500 electric pallet jack showing reduced runtime after charging.',
     priority: 'medium',
     status: 'open',
-    tags: ['pallet-jack', 'battery', 'crown']
+    tags: ['pallet-jack', 'battery', 'crown'],
+    // Pre-assigned to Carol
+    assigned_to: 'service1'
   },
 
-  // Lisa's tickets (Manufacturing) - technical, specific
+  // Lisa's tickets (Manufacturing)
   {
     customerId: 'lisa.manufacturing@example.com',
     title: 'CNC machine spindle alignment error',
-    description: 'Haas VF-2SS vertical machining center reporting spindle alignment errors (Code: AL-278). Tolerance verification shows 0.02mm deviation at 1000 RPM. Production quality affected. Required tolerance: ±0.01mm.',
+    description: 'Haas VF-2SS spindle alignment error (Code: AL-278).',
     priority: 'urgent',
     status: 'new',
-    tags: ['cnc', 'haas', 'spindle', 'precision']
+    tags: ['cnc', 'haas', 'spindle', 'precision'],
+    // Self-assignment test: leave unassigned
+    assigned_to: null
   },
   {
     customerId: 'lisa.manufacturing@example.com',
     title: 'Robot arm calibration drift',
-    description: 'FANUC R-2000iC robot arm experiencing progressive calibration drift during extended operations. Pick-and-place accuracy degrading by ~0.5mm per 8-hour shift. TCP recalibration required daily instead of weekly.',
+    description: 'FANUC R-2000iC robot arm experiencing calibration drift.',
     priority: 'high',
     status: 'open',
-    tags: ['robot', 'fanuc', 'calibration']
+    tags: ['robot', 'fanuc', 'calibration'],
+    // Pre-assigned to Carol
+    assigned_to: 'service1'
   },
 
-  // Dave's tickets (Mining) - direct, safety-focused
+  // Dave's tickets (Mining)
   {
     customerId: 'dave.mining@example.com',
     title: 'Conveyor belt misalignment',
-    description: 'Main crusher feed conveyor belt misaligned. Safety sensors triggering emergency stops. Belt showing wear on edges. SAFETY CRITICAL - risk of belt failure and material spillage.',
+    description: 'Main crusher feed conveyor belt misaligned. Safety sensors triggered.',
     priority: 'urgent',
     status: 'new',
-    tags: ['conveyor', 'safety', 'belt']
+    tags: ['conveyor', 'safety', 'belt'],
+    // Pre-assigned to Carol
+    assigned_to: 'service1'
+  },
+  // TWO drill rig tickets:
+  {
+    customerId: 'dave.mining@example.com',
+    title: 'Hydraulic drill rig pressure loss - assigned',
+    description: 'Atlas Copco D65 drill rig losing pressure (200->150 bar).',
+    priority: 'high',
+    status: 'open',
+    tags: ['drill-rig', 'hydraulic', 'atlas-copco'],
+    // Pre-assigned to Carol for Test 21
+    assigned_to: 'service1'
   },
   {
     customerId: 'dave.mining@example.com',
-    title: 'Hydraulic drill rig pressure loss',
-    description: 'Atlas Copco D65 drill rig losing pressure during operation. Pressure drops from 200 bar to 150 bar within 30 mins. Multiple pressure sensors checked. No visible leaks. Need inspection before next shift.',
+    title: 'Hydraulic drill rig pressure loss - unassigned',
+    description: 'Atlas Copco D65 drill rig losing pressure (200->150 bar) – review needed.',
     priority: 'high',
     status: 'open',
-    tags: ['drill-rig', 'hydraulic', 'atlas-copco']
+    tags: ['drill-rig', 'hydraulic', 'atlas-copco'],
+    // Self-assignment test so leave unassigned (null)
+    assigned_to: null
   },
 
-  // Karen's tickets (Retail) - customer-focused, efficiency-oriented
+  // Karen's tickets (Retail)
   {
     customerId: 'karen.retail@example.com',
     title: 'Automated storage retrieval system failure',
-    description: 'ASRS in Zone B completely offline. 12 picking stations affected. Error code E-235 on main console. Already tried emergency reset procedure. Need immediate assistance - impacting order fulfillment SLAs.',
+    description: 'ASRS in Zone B completely offline. Error code E-235.',
     priority: 'urgent',
     status: 'new',
-    tags: ['asrs', 'automation', 'warehouse']
+    tags: ['asrs', 'automation', 'warehouse'],
+    // Self-assignment so unassigned
+    assigned_to: null
   },
   {
     customerId: 'karen.retail@example.com',
     title: 'Conveyor belt speed sensor malfunction',
-    description: 'Package routing conveyor showing inconsistent speeds. Speed readout fluctuating between 0.2-0.8 m/s when set to 0.5 m/s. Causing package jams at sorting stations.',
+    description: 'Conveyor speed sensor error, causing jams at sorting stations.',
     priority: 'high',
     status: 'new',
-    tags: ['conveyor', 'sensor', 'sorting']
+    tags: ['conveyor', 'sensor', 'sorting'],
+    // Not directly referenced – assign to Carol
+    assigned_to: 'service1'
   },
   {
     customerId: 'karen.retail@example.com',
     title: 'Pallet wrapper tension issues',
-    description: 'Automatic pallet wrapper applying inconsistent tension. Film breaking frequently. Tested with different film rolls - same issue. Machine details: Phoenix PRRA-2000.',
+    description: 'Pallet wrapper applying inconsistent tension; film breaking frequently.',
     priority: 'medium',
     status: 'new',
-    tags: ['pallet-wrapper', 'maintenance']
+    tags: ['pallet-wrapper', 'maintenance'],
+    // Self-assignment so unassigned
+    assigned_to: null
   },
 
-  // Tom's tickets (Agriculture) - weather-aware, seasonal context
+  // Tom's tickets (Agriculture)
   {
     customerId: 'tom.agriculture@example.com',
     title: 'John Deere combine harvester engine overheating',
-    description: 'S780 combine showing high temp warnings after 2hrs operation. Radiator clean, coolant full. Harvest season starts next week - critical to resolve. Unit ID: JD-S780-2345.',
+    description: 'S780 combine overheating. Radiator clean, coolant full.',
     priority: 'urgent',
     status: 'new',
-    tags: ['combine', 'john-deere', 'engine', 'cooling']
+    tags: ['combine', 'john-deere', 'engine', 'cooling'],
+    // Pre-assigned to Carol
+    assigned_to: 'service1'
   },
   {
     customerId: 'tom.agriculture@example.com',
     title: 'Irrigation pump pressure fluctuation',
-    description: 'Center pivot irrigation system showing pressure drops. Grundfos pump (Model CR 95-4) cycling irregularly. Flow meter readings unstable between 200-400 GPM. 500 acres affected.',
+    description: 'Center pivot irrigation system showing pressure drops. Grundfos pump cycling irregularly.',
     priority: 'high',
     status: 'new',
-    tags: ['irrigation', 'pump', 'grundfos']
+    tags: ['irrigation', 'pump', 'grundfos'],
+    // Pre-assigned to Carol
+    assigned_to: 'service1'
   },
   {
     customerId: 'tom.agriculture@example.com',
     title: 'Grain auger bearing noise',
-    description: 'Westfield MK130-71 grain auger making loud grinding noise at main drive bearing. Need inspection before harvest. Currently stored in Barn 3.',
+    description: 'Westfield grain auger making loud grinding noise at main drive bearing.',
     priority: 'medium',
     status: 'new',
-    tags: ['auger', 'bearing', 'westfield']
+    tags: ['auger', 'bearing', 'westfield'],
+    // Self-assignment so unassigned
+    assigned_to: null
   },
 
-  // Rachel's tickets (Recycling) - environmental focus, process-oriented
+  // Rachel's tickets (Recycling)
   {
     customerId: 'rachel.recycling@example.com',
     title: 'Baler hydraulic system contamination',
-    description: 'Marathon V6030 auto-tie baler reporting high particle count in hydraulic system. Pressure dropping during compression cycle. Environmental concern due to potential leak. Need inspection and fluid analysis.',
+    description: 'Marathon V6030 baler reporting high particle count in hydraulic system.',
     priority: 'high',
     status: 'new',
-    tags: ['baler', 'hydraulic', 'marathon', 'contamination']
+    tags: ['baler', 'hydraulic', 'marathon', 'contamination'],
+    // Pre-assigned to Carol
+    assigned_to: 'service1'
   },
   {
     customerId: 'rachel.recycling@example.com',
     title: 'Shredder overload protection trips',
-    description: 'Industrial shredder (UNTHA RS40) repeatedly triggering overload protection. Occurs with normal material load. Already checked blade condition and drive belt tension. Unit run time: 3,892 hours.',
+    description: 'Industrial shredder (UNTHA RS40) triggering overload protection repeatedly.',
     priority: 'high',
     status: 'new',
-    tags: ['shredder', 'electrical', 'untha']
+    tags: ['shredder', 'electrical', 'untha'],
+    // Pre-assigned to Carol
+    assigned_to: 'service1'
   },
   {
     customerId: 'rachel.recycling@example.com',
     title: 'Magnetic separator belt misalignment',
-    description: 'Eriez suspended magnet showing belt tracking issues. Belt moving 15mm to left side. Affecting separation efficiency of ferrous materials. Please check during non-peak hours.',
+    description: 'Eriez suspended magnet showing belt tracking issues; belt moving 15mm to left.',
     priority: 'medium',
     status: 'new',
-    tags: ['separator', 'belt', 'eriez']
+    tags: ['separator', 'belt', 'eriez'],
+    // Pre-assigned to Carol
+    assigned_to: 'service1'
   },
 
-  // Paul's tickets (Port Operations) - colloquial style
+  // Paul's tickets (Port Operations)
   {
     customerId: 'paul.port@example.com',
     title: 'Container spreader thing not locking properly',
-    description: 'Hey guys, got a real headache with the Kalmar container handler (the big yellow one, TH-458). Those twistlock thingies aren\'t clicking in right. Safety system keeps beeping at us and won\'t let us lift. Got a ship waiting at B5 and the boss is breathing down my neck!',
+    description: 'Kalmar container handler twistlock not clicking in correctly.',
     priority: 'urgent',
     status: 'new',
-    tags: ['container-handler', 'kalmar', 'spreader', 'safety']
+    tags: ['container-handler', 'kalmar', 'spreader', 'safety'],
+    // Self-assignment so unassigned
+    assigned_to: null
   },
   {
     customerId: 'paul.port@example.com',
     title: 'STS Crane #3 keeps losing power',
-    description: 'That ZPMC crane we got in 2018 is acting up again. You know, the 65-tonner? Power keeps dropping out when we swing the trolley around. Computer\'s flashing some F-387 code at us. Real pain when we\'re trying to work a vessel.',
+    description: 'ZPMC crane losing power when swinging trolley. F-387 code flashes.',
     priority: 'high',
     status: 'new',
-    tags: ['gantry-crane', 'electrical', 'zpmc']
+    tags: ['gantry-crane', 'electrical', 'zpmc'],
+    // Self-assignment so unassigned
+    assigned_to: null
   },
   {
     customerId: 'paul.port@example.com',
     title: 'Low tire pressure on the reach stacker',
-    description: 'That fancy tire monitoring system on the Hyster is going nuts about the right front tire. Says it\'s running at like 85-90 PSI when it should be 125. Been like this all week. Can someone take a look? It\'s the RS45-31CH if that helps.',
+    description: 'Hyster reach stacker tire pressure low; reading 85-90 PSI instead of 125.',
     priority: 'medium',
     status: 'new',
-    tags: ['reach-stacker', 'hyster', 'tires']
+    tags: ['reach-stacker', 'hyster', 'tires'],
+    // Pre-assigned to Carol
+    assigned_to: 'service1'
   },
 
-  // Amy's tickets (Food Processing) - hygiene conscious, production impact
+  // Amy's tickets (Food Processing)
   {
     customerId: 'amy.food@example.com',
     title: 'Steam kettle temperature control failure',
-    description: 'Groen BPM-40G steam kettle not maintaining set temperature. Digital control panel unresponsive. Unit is clean and descaled. Production line 2 affected. Need FDA-compliant repair.',
+    description: 'Groen BPM-40G steam kettle not holding set temperature. Affected production line 2.',
     priority: 'urgent',
     status: 'new',
-    tags: ['kettle', 'temperature', 'groen', 'food-safety']
+    tags: ['kettle', 'temperature', 'groen', 'food-safety'],
+    // Pre-assigned to Carol
+    assigned_to: 'service1'
   },
   {
     customerId: 'amy.food@example.com',
     title: 'Packaging line servo motor fault',
-    description: 'Servo motor on Multivac R535 packaging line throwing Error 22-8B. Affecting seal integrity. Already checked encoder and power supply. Need food-grade compatible solution.',
+    description: 'Multivac R535 packaging line servo motor throwing Error 22-8B; seal integrity compromised.',
     priority: 'high',
     status: 'new',
-    tags: ['packaging', 'servo', 'multivac']
+    tags: ['packaging', 'servo', 'multivac'],
+    // Pre-assigned to Carol
+    assigned_to: 'service1'
   },
   {
     customerId: 'amy.food@example.com',
     title: 'Metal detector calibration drift',
-    description: 'Mettler-Toledo metal detector on Line 3 showing sensitivity drift. False rejects increased 40% since last calibration. HACCP compliance at risk. Calibration certificate needed after service.',
+    description: 'Mettler-Toledo metal detector sensitivity drift; false rejects increased 40%.',
     priority: 'high',
     status: 'new',
-    tags: ['metal-detector', 'calibration', 'mettler-toledo', 'quality']
+    tags: ['metal-detector', 'calibration', 'mettler-toledo', 'quality'],
+    // Pre-assigned to Carol
+    assigned_to: 'service1'
   },
 
-  // Alice's tickets (Demo customer) - general maintenance
+  // Alice's tickets (Demo customer)
   {
     customerId: 'customer1@example.com',
     title: 'Preventive maintenance check',
-    description: 'Annual maintenance due for facility equipment. Please schedule inspection for: \n1. Air handling units\n2. Emergency generators\n3. Fire suppression systems',
+    description: 'Annual maintenance due for facility equipment (air handling, generators, fire suppression).',
     priority: 'low',
     status: 'new',
-    tags: ['maintenance', 'inspection', 'facility']
+    tags: ['maintenance', 'inspection', 'facility'],
+    // Pre-assigned to Carol
+    assigned_to: 'service1'
   },
   {
     customerId: 'customer1@example.com',
     title: 'Loading dock door sensor replacement',
-    description: 'Safety sensor on dock door #4 intermittently failing. Door sometimes won\'t close. Need replacement parts and service.',
+    description: 'Dock door #4 sensor intermittently failing; door sometimes will not close.',
     priority: 'medium',
     status: 'new',
-    tags: ['door', 'sensor', 'safety']
+    tags: ['door', 'sensor', 'safety'],
+    // Pre-assigned to Carol
+    assigned_to: 'service1'
   },
 
-  // Bob's tickets (Demo customer) - equipment upgrades
+  // Bob's tickets (Demo customer)
   {
     customerId: 'customer2@example.com',
     title: 'Upgrade request for control system',
-    description: 'Looking to upgrade the existing PLC system to newer model. Need consultation on compatible replacements and migration plan.',
+    description: 'Requesting upgrade for existing PLC system – need consultation on compatibility and migration plan.',
     priority: 'low',
     status: 'new',
-    tags: ['upgrade', 'plc', 'automation']
+    tags: ['upgrade', 'plc', 'automation'],
+    // Pre-assigned to Carol
+    assigned_to: 'service1'
   },
   {
     customerId: 'customer2@example.com',
     title: 'New equipment installation quote',
-    description: 'Requesting quote for installation of new conveyor system. Need site survey and timeline estimate.',
+    description: 'Requesting quote for installation of new conveyor system – need site survey and timeline estimate.',
     priority: 'medium',
     status: 'new',
-    tags: ['quote', 'installation', 'conveyor']
+    tags: ['quote', 'installation', 'conveyor'],
+    // Pre-assigned to Carol
+    assigned_to: 'service1'
   }
 ];
 
-// Pre-selected tickets to be assigned (about 1/3 of all tickets)
+// Pre-selected tickets array remains as is (for other parts of code)
 const ticketsToAssign = [
   'Toyota 8FGU25 forklift hydraulic leak',
   'CAT excavator won\'t start',
@@ -468,7 +586,7 @@ const ticketsToAssign = [
   'Steam kettle temperature control failure'
 ];
 
-// Example AI actions for each type
+// Example AI actions (unchanged)
 const testAiActions = [
   {
     userId: 'service1@example.com', // Demo service rep
@@ -522,7 +640,7 @@ const testAiActions = [
     interpretedAction: {
       note_content: 'Assigning this dock leveler issue to myself. Based on the symptoms described, I suspect either a hydraulic valve malfunction or a faulty limit switch. Will bring diagnostic equipment for a thorough system check.',
       is_customer_visible: false,
-      assign_to: '' // Will be set to service1's ID
+      assign_to: '' // Will be set to Carol’s UUID
     },
     status: 'pending',
     requiresApproval: true
@@ -611,9 +729,8 @@ async function seedTestData(supabase: any) {
     serviceRepIds.set('service1@example.com', demoServiceRepId);
     
     for (const user of testServiceReps) {
-      if (user.email === 'service1@example.com') continue; // Skip demo rep as already handled
+      if (user.email === 'service1@example.com') continue;
 
-      // Check if user exists
       const existingRep = existingUsers?.users?.find(u => u.email === user.email);
       if (existingRep) {
         console.log(`Using existing service rep ${user.email} with ID: ${existingRep.id}`);
@@ -640,7 +757,6 @@ async function seedTestData(supabase: any) {
     console.log('Setting up test customers...');
     const customerIds = new Map<string, string>();
     for (const user of testCustomers) {
-      // Check if customer exists
       const existingCustomer = existingUsers?.users?.find(u => u.email === user.email);
       if (existingCustomer) {
         console.log(`Using existing customer ${user.email} with ID: ${existingCustomer.id}`);
@@ -666,7 +782,6 @@ async function seedTestData(supabase: any) {
     // Create or get admin users
     console.log('Setting up test admins...');
     for (const user of testAdmins) {
-      // Check if admin exists
       const existingAdmin = existingUsers?.users?.find(u => u.email === user.email);
       if (existingAdmin) {
         console.log(`Using existing admin ${user.email} with ID: ${existingAdmin.id}`);
@@ -690,18 +805,19 @@ async function seedTestData(supabase: any) {
     // Create tickets
     console.log('Creating test tickets...');
     const ticketIds = new Map<string, string>();
+    // When inserting tickets, override assigned_to based on our intended set:
+    // If ticket.assigned_to is 'service1', then assign with demoServiceRepId.
+    // If ticket.assigned_to is null, leave it as null.
     for (const ticket of testTickets) {
       const customerId = customerIds.get(ticket.customerId);
       if (!customerId) {
         console.error(`Customer ID not found for ${ticket.customerId}`);
         continue;
       }
-
-      // If this ticket is in the pre-selected list, assign it to a random service rep
-      const assignedTo = ticketsToAssign.includes(ticket.title)
-        ? serviceRepIds.get(['service1@example.com', 'service2@example.com'][Math.floor(Math.random() * 2)])
-        : null;
-
+      
+      // If ticket.assigned_to is our placeholder "service1", replace with demoServiceRepId.
+      const assigned = (ticket.assigned_to === 'service1') ? demoServiceRepId : ticket.assigned_to || null;
+      
       const { data, error } = await supabase
         .from('tickets')
         .insert({
@@ -710,7 +826,7 @@ async function seedTestData(supabase: any) {
           status: ticket.status,
           priority: ticket.priority,
           customer_id: customerId,
-          assigned_to: assignedTo,
+          assigned_to: assigned,
           tags: ticket.tags
         })
         .select()
@@ -719,18 +835,15 @@ async function seedTestData(supabase: any) {
       if (error) {
         console.error(`Failed to create ticket ${ticket.title}:`, error.message);
       } else {
-        console.log(`Created ticket: ${ticket.title}${assignedTo ? ' (assigned)' : ''}`);
+        console.log(`Created ticket: ${ticket.title}${assigned ? ' (assigned)' : ' (unassigned)'}`);
         ticketIds.set(ticket.title, data.id);
       }
     }
 
-    // Create AI actions
+    // Create AI actions (unchanged)
     console.log('Creating test AI actions...');
     for (const action of testAiActions) {
-      // Get ticket ID based on action type and content
       let ticketId = '';
-      
-      // Define ticket mappings with exact titles from testTickets
       const ticketMappings = {
         'Toyota 8FGU25 forklift hydraulic leak': ['Toyota forklift', 'hydraulic leak', 'forklift'],
         'CAT excavator won\'t start': ['CAT 320', 'excavator', 'won\'t start'],
@@ -738,7 +851,6 @@ async function seedTestData(supabase: any) {
         'Dock leveler malfunction - Bay 3': ['dock leveler', 'leveler', 'Bay 3']
       };
 
-      // Find matching ticket
       for (const [title, keywords] of Object.entries(ticketMappings)) {
         if (keywords.some(keyword => 
           action.inputText.toLowerCase().includes(keyword.toLowerCase()) ||
@@ -759,7 +871,6 @@ async function seedTestData(supabase: any) {
         continue;
       }
 
-      // For assign_ticket actions, set the assignTo to the service rep's ID
       if (action.actionType === 'assign_ticket') {
         action.interpretedAction.assign_to = demoServiceRepId;
       }
@@ -784,13 +895,13 @@ async function seedTestData(supabase: any) {
     }
 
     return { success: true, message: 'Test data seeding completed successfully' };
+
   } catch (error) {
     console.error('Error in seedTestData:', error);
     return { success: false, error: error.message };
   }
 }
 
-// Simple endpoint without auth for development use
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { 
@@ -822,4 +933,4 @@ Deno.serve(async (req) => {
       } 
     }
   );
-}); 
+});

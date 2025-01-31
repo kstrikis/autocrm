@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { Link } from 'react-router-dom';
 import {
   Table,
   TableBody,
@@ -324,9 +325,12 @@ export function AIActionsDashboard(): JSX.Element {
                 <TableCell>
                   <HoverCard openDelay={0} closeDelay={0}>
                     <HoverCardTrigger>
-                      <div className="cursor-help underline decoration-dotted max-w-[200px] line-clamp-3">
+                      <Link 
+                        to={`/tickets/${action.ticket_id}`}
+                        className="cursor-pointer hover:text-primary underline decoration-dotted max-w-[200px] line-clamp-3"
+                      >
                         {action.ticket?.title || 'Unknown Ticket'}
-                      </div>
+                      </Link>
                     </HoverCardTrigger>
                     <HoverCardContent className="w-80">
                       <div className="space-y-2">
