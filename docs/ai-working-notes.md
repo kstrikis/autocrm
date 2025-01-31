@@ -500,3 +500,9 @@ CREATE TYPE action_type AS ENUM (
    - Updated Supabase CLI from v2.6.8 to v2.9.6
    - This resolved the "must be owner of publication" errors during database resets
    - The newer version handles publication permissions correctly
+
+### 2024-03-21
+- Added clickable ticket title links in AIActionsDashboard component
+- Ticket titles now navigate to their respective ticket detail pages using React Router
+- Enhanced user experience by making ticket titles interactive while preserving hover card functionality
+- Used proper styling to indicate clickable nature of ticket titles with hover states
