@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ChangePassword } from '@/pages/auth/change-password'
 import { useAuth } from '@/contexts/AuthContext'
+import { AIPreferences } from '@/components/settings/AIPreferences'
 
 export function SettingsPage(): React.ReactElement {
   logger.methodEntry('SettingsPage')
@@ -62,7 +63,11 @@ export function SettingsPage(): React.ReactElement {
               <CardDescription>Customize your experience</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600">Preferences settings coming soon...</p>
+              {user?.user_metadata.role === 'service_rep' ? (
+                <AIPreferences />
+              ) : (
+                <p className="text-gray-600">No preferences available for your role.</p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -144,7 +144,7 @@ Available actions:
 1. add_note: Add internal or customer-visible notes
 2. update_status: Change ticket status
 3. update_tags: Add or remove tags
-4. assign_ticket: Assign ticket to a service rep (IMPORTANT: Use this for ANY assignment request)
+4. assign_ticket: Assign ticket to a service rep
 
 IMPORTANT ASSIGNMENT RULES:
 - When you see words like "assign", "give me", "take", or similar assignment requests:

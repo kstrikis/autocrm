@@ -378,3 +378,12 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
     ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
+
+export type Tables = Database['public']['Tables'];
+export type Enums = Database['public']['Enums'];
+
+export type UserRole = Enums['user_role'];
+export type UserStatus = Enums['user_status'];
+
+export type NewUserProfile = Tables['user_profiles']['Insert'];
+export type UpdateUserProfile = Tables['user_profiles']['Update'];
