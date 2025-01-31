@@ -37,7 +37,8 @@ export function AIInput(): JSX.Element {
       toast({
         title: "Empty Input",
         description: "Please enter some text to process.",
-        variant: "default"
+        variant: "default",
+        duration: 3000
       });
       return;
     }
@@ -66,16 +67,22 @@ export function AIInput(): JSX.Element {
         toast({
           title: "Action Pending",
           description: "Action pending approval. Check AI Actions dashboard.",
-          variant: "default"
+          variant: "default",
+          duration: 5000
         });
       }
 
     } catch (error) {
-      logger.error('Error processing AI input:', { error: error instanceof Error ? error.message : String(error) });
+      logger.error('Error processing AI input:', { 
+        error: error instanceof Error ? error.message : String(error),
+        input: trimmedInput,
+        userId: user?.id
+      });
       toast({
         title: "Error",
-        description: "Failed to process input. Please try again.",
-        variant: "destructive"
+        description: error instanceof Error ? error.message : "Failed to process input. Please try again.",
+        variant: "destructive",
+        duration: 5000
       });
     } finally {
       setIsProcessing(false);

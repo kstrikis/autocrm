@@ -55,6 +55,10 @@ type AIAction = {
   status: 'pending' | 'approved' | 'rejected' | 'executed' | 'failed';
   error_message?: string | null;
   ticket_id: string;
+  assign_to_user?: {
+    id: string;
+    full_name: string;
+  };
   ticket: {
     title: string;
     status: string;
@@ -66,11 +70,6 @@ type AIAction = {
       id: string;
       name: string;
     };
-    assigned_to: string | null;
-    assigned_user: {
-      id: string;
-      full_name: string;
-    } | null;
   } | null;
 };
 
@@ -85,7 +84,11 @@ function getHumanReadableAction(action: AIAction): string {
       const removeTags = action.interpreted_action.tags_to_remove?.join(', ') || '';
       return `Tags: ${addTags ? `+[${addTags}]` : ''} ${removeTags ? `-[${removeTags}]` : ''}`;
     case 'assign_ticket':
-      const assignToUser = action.ticket?.assigned_user?.full_name || 'Unknown User';
+      logger.info('Processing assign_ticket action', {
+        assignToUser: action.assign_to_user,
+        interpretedAction: action.interpreted_action
+      });
+      const assignToUser = action.assign_to_user?.full_name || 'Unknown User';
       const customerName = action.ticket?.customer?.name || 'Unknown Customer';
       return `Assign ${customerName}'s ticket to ${assignToUser}`;
     default:
@@ -110,15 +113,8 @@ export function AIActionsDashboard(): JSX.Element {
       const { data, error } = await supabase
         .from('ai_actions')
         .select(`
-          id,
-          created_at,
-          input_text,
-          action_type,
-          interpreted_action,
-          status,
-          error_message,
-          ticket_id,
-          ticket:tickets (
+          *,
+          tickets:tickets (
             id,
             title,
             status,
@@ -126,15 +122,9 @@ export function AIActionsDashboard(): JSX.Element {
             description,
             priority,
             tags,
-            customer_id,
             customer:user_profiles!tickets_customer_id_fkey (
               id,
               name:full_name
-            ),
-            assigned_to,
-            assigned_user:user_profiles!tickets_assigned_to_fkey (
-              id,
-              full_name
             )
           )
         `)
@@ -146,41 +136,41 @@ export function AIActionsDashboard(): JSX.Element {
         throw error;
       }
 
-      logger.info('Raw data from database:', { rawData: data });
+      // Get all unique assign_to IDs
+      const assignToIds = (data || [])
+        .map(action => action.interpreted_action.assign_to)
+        .filter((id): id is string => !!id);
+
+      // Fetch user info for those IDs
+      const { data: userProfiles, error: userError } = await supabase
+        .from('user_profiles')
+        .select('id, full_name')
+        .in('id', assignToIds);
+
+      if (userError) {
+        logger.error('Error fetching user profiles:', { error: userError });
+        throw userError;
+      }
+
+      // Create a map of user IDs to names
+      const userMap = new Map(
+        (userProfiles || []).map(user => [user.id, user])
+      );
 
       // Transform the data to match our expected types
-      const transformedData = (data || []).map(action => {
-        // Handle ticket being returned as an array
-        const ticketData = Array.isArray(action.ticket) ? action.ticket[0] : action.ticket;
-        
-        return {
-          ...action,
-          ticket: ticketData ? {
-            ...ticketData,
-            title: ticketData.title || 'Unknown Ticket',
-            status: ticketData.status || 'unknown',
-            created_at: ticketData.created_at || action.created_at,
-            description: ticketData.description || 'No description',
-            priority: ticketData.priority || 'medium',
-            tags: ticketData.tags || [],
-            customer: ticketData.customer || { id: '', name: 'Unknown Customer' },
-            assigned_to: ticketData.assigned_to,
-            assigned_user: ticketData.assigned_user || null
-          } : {
-            title: 'Unknown Ticket',
-            status: 'unknown',
-            created_at: action.created_at,
-            description: 'No description',
-            priority: 'medium',
-            tags: [],
-            customer: { id: '', name: 'Unknown Customer' },
-            assigned_to: null,
-            assigned_user: null
-          }
-        };
+      const transformedData = (data || []).map(action => ({
+        ...action,
+        ticket: action.tickets,
+        assign_to_user: action.interpreted_action.assign_to 
+          ? userMap.get(action.interpreted_action.assign_to)
+          : undefined
+      }));
+
+      logger.info('Fetched and transformed AI actions:', { 
+        count: transformedData.length,
+        userMap: Object.fromEntries(userMap),
+        transformedData 
       });
-      
-      logger.info('Fetched and transformed AI actions:', { count: transformedData.length });
       setActions(transformedData);
     } catch (error) {
       logger.error('Failed to load AI actions:', { error: error instanceof Error ? error.message : String(error) });
