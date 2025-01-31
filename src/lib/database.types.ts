@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type Database = {
+export interface Database {
   public: {
     Tables: {
       ticket_messages: {
@@ -225,8 +225,6 @@ export type Database = {
   }
 }
 
-type PublicSchema = Database[Extract<keyof Database, "public">]
-
 // Base types from database
 export type DbTicket = Database['public']['Tables']['tickets']['Row'];
 export type DbUserProfile = Database['public']['Tables']['user_profiles']['Row'];
@@ -241,6 +239,38 @@ export interface Ticket extends Omit<DbTicket, 'created_at' | 'updated_at' | 're
   assignedTo: string | null;
 }
 
+export type AIActionType = 'add_note' | 'update_status' | 'update_tags' | 'assign_ticket';
+export type AIActionStatus = 'pending' | 'approved' | 'rejected' | 'executed' | 'failed';
+
+export interface AIAction {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+  ticket_id: string;
+  input_text: string;
+  action_type: AIActionType;
+  interpreted_action: {
+    customer_name: string;
+    note_content?: string;
+    is_customer_visible?: boolean;
+    status_update?: string;
+    tags_to_add?: string[];
+    tags_to_remove?: string[];
+  };
+  status: AIActionStatus;
+  error_message?: string;
+  executed_at?: string;
+  requires_approval: boolean;
+}
+
+export interface UserAIPreferences {
+  requireApproval: boolean;
+  enableVoiceInput: boolean;
+  defaultNoteVisibility: 'internal' | 'customer';
+}
+
+// Update UserProfile interface to include AI preferences
 export interface UserProfile extends Omit<DbUserProfile, 'full_name' | 'display_name' | 'avatar_url' | 'created_at' | 'updated_at' | 'last_seen_at'> {
   fullName: string;
   displayName: string | null;
@@ -248,100 +278,49 @@ export interface UserProfile extends Omit<DbUserProfile, 'full_name' | 'display_
   createdAt: string;
   updatedAt: string;
   lastSeenAt: string;
+  aiPreferences: UserAIPreferences;
   tickets: Ticket[];
 }
 
 export type Tables<
   PublicTableNameOrOptions extends
-    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
+    | keyof Database['public']['Tables']
     | { schema: keyof Database },
   TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-        Database[PublicTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    ? keyof Database[PublicTableNameOrOptions['schema']]['Tables']
+    : never = never
 > = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+  ? Database[PublicTableNameOrOptions['schema']]['Tables'][TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
-        PublicSchema["Views"])
-    ? (PublicSchema["Tables"] &
-        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
-        Row: infer R
-      }
-      ? R
-      : never
-    : never
-
-export type TablesInsert<
-  PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
+  : PublicTableNameOrOptions extends keyof Database['public']['Tables']
+  ? Database['public']['Tables'][PublicTableNameOrOptions] extends {
+      Row: infer R
     }
-    ? I
+    ? R
     : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
-    : never
-
-export type TablesUpdate<
-  PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
-    ? U
-    : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
-    : never
+  : never
 
 export type Enums<
   PublicEnumNameOrOptions extends
-    | keyof PublicSchema["Enums"]
+    | keyof Database['public']['Enums']
     | { schema: keyof Database },
   EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    ? keyof Database[PublicEnumNameOrOptions['schema']]['Enums']
+    : never = never
 > = PublicEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
-    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
-    : never
+  ? Database[PublicEnumNameOrOptions['schema']]['Enums'][EnumName]
+  : PublicEnumNameOrOptions extends keyof Database['public']['Enums']
+  ? Database['public']['Enums'][PublicEnumNameOrOptions]
+  : never
 
-export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof PublicSchema["CompositeTypes"]
-    | { schema: keyof Database },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
-  }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
-    ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
+export type DbTables = Database['public']['Tables'];
+export type DbEnums = Database['public']['Enums'];
+
+export type UserRole = DbEnums['user_role'];
+export type UserStatus = DbEnums['user_status'];
+
+export type NewUserProfile = DbTables['user_profiles']['Insert'];
+export type UpdateUserProfile = DbTables['user_profiles']['Update'];
