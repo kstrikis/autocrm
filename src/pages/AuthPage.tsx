@@ -37,13 +37,14 @@ export function AuthPage(): React.ReactElement {
     logger.methodExit('AuthPage.handleSampleLogin');
   };
 
-  const handleSeedData = async () => {
+  const handleSeedData = async (): Promise<void> => {
     logger.methodEntry('handleSeedData');
     try {
       setSeeding(true);
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/seed-test-data`, {
         method: 'POST',
         headers: {
+          // eslint-disable-next-line @typescript-eslint/naming-convention
           'Content-Type': 'application/json'
         }
       });

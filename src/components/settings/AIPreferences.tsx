@@ -3,7 +3,6 @@ import { Switch } from '@/components/ui/switch';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import type { PostgrestError } from '@supabase/supabase-js';
 import {
   Select,
   SelectContent,

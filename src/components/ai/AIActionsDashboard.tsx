@@ -260,7 +260,7 @@ export function AIActionsDashboard(): JSX.Element {
         }
       });
 
-    return () => {
+    return (): void => {
       logger.info('Cleaning up realtime subscription');
       void subscription.unsubscribe();
       setIsSubscribed(false);
@@ -324,12 +324,9 @@ export function AIActionsDashboard(): JSX.Element {
                 <TableCell>
                   <HoverCard openDelay={0} closeDelay={0}>
                     <HoverCardTrigger>
-                      <a 
-                        href={`/tickets/${action.ticket_id}`}
-                        className="cursor-pointer hover:text-primary underline decoration-dotted max-w-[200px] line-clamp-3"
-                      >
+                      <div className="cursor-help underline decoration-dotted max-w-[200px] line-clamp-3">
                         {action.ticket?.title || 'Unknown Ticket'}
-                      </a>
+                      </div>
                     </HoverCardTrigger>
                     <HoverCardContent className="w-80">
                       <div className="space-y-2">

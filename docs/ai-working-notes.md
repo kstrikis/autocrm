@@ -1,6 +1,16 @@
 # AI Working Notes
 
 ## Latest Changes
+- Fixed TypeScript return type in AIActionsDashboard cleanup function
+- Removed unused PostgrestError import from AIPreferences
+- Simplified and fixed database types in database.types.ts
+- Added proper return type and eslint comment for HTTP header in AuthPage
+- Fixed linting errors across multiple components
+- Identified failing tests in AI functionality that need attention:
+  - Service rep and admin access tests failing due to user visibility
+  - Admin user management tests failing due to UI interaction issues
+  - AI assistant tests failing due to missing login command
+  - AI action processing tests failing due to status element not found
 - Added Supabase Edge Runtime type definitions to test-ai-action Edge Function
 - Fixed CORS headers and error handling in test-ai-action Edge Function
 - Improved tracing setup with LangChain and LangSmith
